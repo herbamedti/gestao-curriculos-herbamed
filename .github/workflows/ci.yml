@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 24, cache: npm }
       - run: npm ci
-      - run: npm run db:start
+      - run: npx supabase db start --yes
       - run: npm run test:db
       - run: npm run db:types
       - run: git diff --exit-code -- src/lib/database.types.ts

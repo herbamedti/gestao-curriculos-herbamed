@@ -111,10 +111,21 @@ insert into public.role_permissions select r.id,p.code from public.roles r cross
 insert into public.role_permissions select r.id,p.code from public.roles r cross join public.permissions p where r.name in ('Gestor da vaga','Entrevistador') and p.code in ('jobs.read','candidates.read','documents.read','documents.download','applications.read','evaluations.read','evaluations.create','interviews.read');
 insert into public.role_permissions select r.id,p.code from public.roles r cross join public.permissions p where r.name='Auditoria' and p.code in ('audit.read','reports.read');
 
-insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values
- ('quarantine','quarantine',false,5242880,array['application/pdf','image/jpeg']),('documents','documents',false,5242880,array['application/pdf','image/jpeg']);
--- Authenticated user can insert only an already registered object, never overwrite or read quarantine.
-create policy quarantine_insert on storage.objects for insert to authenticated with check(bucket_id='quarantine' and exists(select 1 from public.documents d where d.object_path=name and d.status='pending' and (public.owns_candidate(d.candidate_id) or public.can_candidate(d.candidate_id,'candidates.edit'))));
+-- The historic upload flow is optional. Fresh database-only environments have
+-- no Storage schema; hosted Supabase projects retain the bucket and policy.
+do $$ begin
+ if to_regclass('storage.buckets') is not null then
+  insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values
+   ('quarantine','quarantine',false,5242880,array['application/pdf','image/jpeg']),('documents','documents',false,5242880,array['application/pdf','image/jpeg']);
+ end if;
+ if to_regclass('storage.objects') is not null then
+  -- Authenticated users may insert only registered objects, never read quarantine.
+  execute $policy$create policy quarantine_insert on storage.objects for insert to authenticated
+    with check(bucket_id='quarantine' and exists(select 1 from public.documents d
+      where d.object_path=name and d.status='pending'
+      and (public.owns_candidate(d.candidate_id) or public.can_candidate(d.candidate_id,'candidates.edit'))))$policy$;
+ end if;
+end $$;
 -- Signed links are issued by a small authenticated gateway; no permanent direct read permission.
 -- Worker/gateway use narrow SECURITY DEFINER RPC, storage signing uses server-only worker credentials.
 

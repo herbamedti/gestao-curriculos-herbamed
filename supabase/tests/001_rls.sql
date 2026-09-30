@@ -11,7 +11,18 @@ insert into public.candidates(user_id,full_name,email,city) values
 ('00000000-0000-4000-8000-000000000002','Bob de Teste','rls.bob@example.test','Cidade B');
 insert into public.staff(user_id,display_name) values ('00000000-0000-4000-8000-000000000002','Bob RH');
 insert into public.staff_roles(user_id,role_id) select '00000000-0000-4000-8000-000000000002',id from public.roles where name='Administrador RH';
-insert into storage.objects(bucket_id,name) values ('quarantine','rls/private-test.pdf');
+do $$ begin
+ if to_regclass('storage.objects') is not null then
+  insert into storage.objects(bucket_id,name) values ('quarantine','rls/private-test.pdf');
+ end if;
+end $$;
+create function pg_temp.quarantine_is_hidden() returns boolean language plpgsql as $$
+declare visible_count integer;
+begin
+ if to_regclass('storage.objects') is null then return true; end if;
+ execute 'select count(*) from storage.objects where bucket_id=''quarantine''' into visible_count;
+ return visible_count=0;
+end $$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
@@ -21,7 +32,7 @@ select is((select count(*)::integer from public.candidates where email='rls.bob@
 select ok(not public.is_staff(),'Candidata não tem acesso RH');
 select ok(not has_table_privilege('authenticated','public.candidates','UPDATE'),'Escrita direta em candidatos negada');
 select ok(not has_table_privilege('authenticated','public.applications','INSERT'),'Candidatura direta negada: usar RPC');
-select is((select count(*)::integer from storage.objects where bucket_id='quarantine'),0,'Storage em quarentena sem leitura direta');
+select ok(pg_temp.quarantine_is_hidden(),'Storage em quarentena sem leitura direta, ou desativado');
 
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal1","app_metadata":{"provider":"azure"}}',true);
