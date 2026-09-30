@@ -1,0 +1,11 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --ignore-scripts
+COPY scripts/worker.ts ./scripts/worker.ts
+COPY src/modules/documents/inspect.ts ./src/modules/documents/inspect.ts
+RUN chown -R node:node /app
+USER node
+ENV NODE_ENV=production
+STOPSIGNAL SIGTERM
+CMD ["node", "--import", "tsx", "scripts/worker.ts"]

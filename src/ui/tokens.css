@@ -1,0 +1,10 @@
+:root{
+ --brand-primary:#009445;--primary:#007a38;--primary-hover:#00662e;--primary-text:#007a38;--on-primary:#ffffff;--primary-container:#e7f8ee;
+ --reference-bg:#e0e2ec;--canvas:#f8f9fc;--surface:#ffffff;--surface-container:#f0f3f7;--surface-green:#edf5ed;--green-border:#cfe1cc;
+ --border:#d7deea;--border-soft:#e9edf3;--text:#102033;--text-secondary:#58677b;--text-muted-reference:#758296;
+ --error:#b42318;--error-reference:#d92d20;--error-container:#fff0ee;--warning:#ff9f1c;--warning-text:#855000;--warning-container:#fff3db;--info:#3b82f6;--teal:#15b88a;--focus:#2563eb;
+ --radius-small:8px;--radius-medium:12px;--radius-large:20px;--radius-full:999px;
+ --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
+ --headline-large:40px;--headline-medium:30px;--title-large:22px;--body:14px;--label:12px;
+ --elevation-1:0 1px 3px rgb(16 32 51 / 8%);--elevation-2:0 8px 24px rgb(16 32 51 / 6%);--duration:160ms;--touch-target:44px;
+}

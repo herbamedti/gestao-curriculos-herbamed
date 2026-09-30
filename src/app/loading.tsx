@@ -1,0 +1,1 @@
+export default function Loading() { return <main id="conteudo" className="container page-section" aria-busy="true"><p role="status">Carregando…</p><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></main>; }

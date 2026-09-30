@@ -1,0 +1,9 @@
+# Permissões
+
+`permissions` contém ações granulares; `roles` agrega permissões, escopo `all` ou `assigned` e exigência MFA. `staff_roles` associa usuário; `job_assignments` delimita o escopo `assigned`. A concessão não acontece por domínio de e-mail: requer vínculo explícito. Perfis iniciais são seeds de migration e podem ser alterados por administradores autorizados. O menu lê as permissões efetivas, mas cada página, RPC e download também verifica acesso.
+
+O perfil `Administrador RH` pode operar recrutamento e privacidade; exportação é separada. `Recrutador` não recebe exportação. `Entrevistador` e `Gestor` têm escopo por vaga. Auditoria possui somente leitura de logs/relatórios. Um administrador não pode alterar o próprio vínculo nem o próprio perfil em uma operação.
+
+O cadastro e a edição de currículo pelo RH exigem `candidates.create` e `candidates.edit`, respectivamente. A vinculação manual com vaga usa `applications.link`, concedida a Superadministrador, Administrador RH e Recrutador, com MFA. A RPC confirma currículo completo, vaga publicada e ausência de vínculo anterior; registra o motivo e o ator no histórico. O perfil `Gestor da vaga` mantém apenas seu escopo de leitura e avaliação da vaga atribuída.
+
+Cada membro da equipe começa com `staff.mfa_enabled=true`. A opção pessoal em **Configurações → Conta** pode dispensar AAL2 nas permissões do próprio usuário sem alterar o perfil dos demais. A RPC `set_account_mfa` exige AAL2 ou código válido enviado ao e-mail atual para desativar; a reativação volta a exigir AAL2 nas operações protegidas. A conta e a verificação de MFA continuam acessíveis em AAL1 para que a pessoa possa reativar e configurar o autenticador. O `staff` segue ativo e o provedor Azure continua obrigatório, salvo o seed local explicitamente autorizado.

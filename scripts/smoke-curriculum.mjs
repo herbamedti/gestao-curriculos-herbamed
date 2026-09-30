@@ -1,0 +1,50 @@
+import { chromium } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+const local=await readFile('.env.test.local','utf8');
+const password=process.env.TEST_DEMO_PASSWORD||local.match(/^TEST_DEMO_PASSWORD=(.+)$/m)?.[1];
+if(!password)throw new Error('Senha fictícia ausente de .env.test.local');
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
+try{
+  const page=await browser.newPage();
+  await page.goto('http://localhost:3000/entrar');
+  await page.getByLabel('E-mail').fill('candidata.demo@example.test');
+  await page.getByLabel('Senha').fill(password);
+  await page.getByRole('button',{name:'Entrar',exact:true}).click();
+  await page.waitForURL('**/candidato',{timeout:15000});
+
+  await page.goto('http://localhost:3000/candidato/perfil?etapa=dados');
+  await page.getByLabel('Telefone com DDD').fill('(47) 99999-9999');
+  await page.getByLabel(/Resumo profissional/).fill('Profissional fictícia de qualidade, com formação em processos e melhoria contínua.');
+  await page.getByRole('button',{name:'Salvar dados do currículo'}).click();
+  await page.getByRole('status').waitFor({timeout:15000});
+
+  await page.goto('http://localhost:3000/candidato/perfil?etapa=trajetoria');
+  if(!await page.getByText('Graduação em Qualidade Fictícia').count()){
+    await page.getByLabel('Cargo, curso ou título').last().fill('Graduação em Qualidade Fictícia');
+    await page.getByLabel('Empresa ou instituição').last().fill('Instituição Exemplo');
+    await page.locator('select[name=kind]').last().selectOption('education');
+    await page.getByRole('button',{name:'Adicionar ao currículo'}).click();
+    await page.getByRole('status').waitFor({timeout:15000});
+  }
+
+  await page.goto('http://localhost:3000/candidato/perfil?etapa=revisao');
+  await page.getByText('Seu currículo contém os dados essenciais').waitFor();
+  const pdfPath=await page.locator('a[href$="/pdf"]').getAttribute('href');
+  const pdf=await page.request.get(`http://localhost:3000${pdfPath}`);
+  assert.equal(pdf.status(),200);
+  assert.match(pdf.headers()['content-type'],/application\/pdf/);
+  assert.equal((await pdf.body()).subarray(0,4).toString(),'%PDF');
+
+  await page.goto('http://localhost:3000/vagas/assistente-de-logistica-local-003/candidatar');
+  if(await page.getByRole('button',{name:'Enviar candidatura'}).count()){
+    await page.locator('input[name=acknowledge]').check();
+    await page.getByRole('button',{name:'Enviar candidatura'}).click();
+    try{await page.waitForURL('**/candidato/candidaturas',{timeout:15000});}
+    catch{throw new Error(`Candidatura não avançou: ${await page.locator('[role=alert]').allTextContents()}`);}
+  }
+  const legacy=await page.request.post('http://localhost:3000/api/uploads',{headers:{'Content-Type':'application/json'},data:{}});
+  assert.equal(legacy.status(),410);
+  console.log('Jornada de currículo estruturado, PDF, candidatura e upload antigo desativado: OK.');
+}finally{await browser.close();}

@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { PublicShell } from '@/ui/public-shell';
+import { Icon } from '@/ui/icon';
+export default function TalentPool() { return <PublicShell><section className="container narrow page-section"><p className="eyebrow">BANCO DE TALENTOS</p><h1>Boas conexões abrem<br />novas possibilidades.</h1><p className="lead">Conte sua história, escolha suas áreas de interesse e deixe seu currículo disponível para futuras oportunidades.</p><div className="card"><Icon name="diversity_2" /><h2>Seu talento tem espaço aqui</h2><p>O cadastro é gratuito. Você decide se deseja participar do banco de talentos e pode rever essa escolha na sua central de privacidade.</p><Link href="/candidato/perfil" className="button primary">Cadastrar meu currículo <Icon name="arrow_forward" /></Link></div></section></PublicShell>; }
