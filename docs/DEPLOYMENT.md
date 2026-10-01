@@ -16,9 +16,9 @@ git status --short
 git remote -v
 ```
 
-Crie um repositório Git **privado** no GitHub/GitLab/Bitbucket e envie este projeto pelo procedimento do provedor. Este checkout ainda não possui remote configurado. Antes do primeiro commit, confira `git status --short` e `git check-ignore .env .env.local`; ambos os arquivos de ambiente devem permanecer ignorados. Não envie currículos, tokens, chaves, logs ou dados reais. A Vercel [importa o repositório Git](https://vercel.com/docs/git) e reconhece o Next.js; use a raiz do repositório, `npm ci` e `npm run build`. **Não** escolha `Dockerfile.vercel` nem configure um servidor persistente para a Vercel. O Dockerfile e o Compose continuam para uso local.
+Use o repositório Git **privado** e confira `git status --short` e `git check-ignore .env .env.local` antes de enviar alterações; ambos os arquivos de ambiente devem permanecer ignorados. Não envie currículos, tokens, chaves, logs ou dados reais. A Vercel [importa o repositório Git](https://vercel.com/docs/git) e reconhece o Next.js; use a raiz do repositório, `npm ci` e `npm run build`. O `Dockerfile.vercel` histórico foi preservado em `docs/legacy/` porque a [presença dele na raiz ativaria automaticamente o deploy por contêiner](https://vercel.com/docs/functions/container-images), causando conflito com o preset Next.js. O Dockerfile e o Compose da raiz continuam para uso local.
 
-Depois de criar um repositório remoto vazio, sem README inicial, e revisar os arquivos que serão incluídos:
+Se ainda precisar criar um remoto vazio, sem README inicial, e depois de revisar os arquivos que serão incluídos:
 
 ```powershell
 git add .
@@ -75,7 +75,7 @@ No [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-starte
 
 ## 5. Importar na Vercel e cadastrar variáveis
 
-Em *Vercel → Add New → Project*, importe o repositório privado. Selecione **Next.js**, raiz `./`, instalação `npm ci`, build `npm run build`, sem diretório de saída manual. Escolha um nome de projeto e use o domínio estável `https://SEU-PROJETO.vercel.app` como `APP_URL`. Se a URL final for diferente, corrija `APP_URL` e os redirects antes de testar Auth. Selecione **Node.js 24.x** nas configurações do projeto.
+Em *Vercel → Add New → Project*, importe o repositório privado. Selecione **Next.js** e raiz `./`. Em *Build and Output Settings*, sobrescreva apenas **Build Command** com `npm run build` e **Install Command** com `npm ci`; mantenha **Output Directory** no padrão do Next.js. O build explícito executa também a validação de ambiente definida no `package.json`. Escolha um nome de projeto e use o domínio estável `https://SEU-PROJETO.vercel.app` como `APP_URL`. Se a URL final for diferente, corrija `APP_URL` e os redirects antes de testar Auth. Selecione **Node.js 24.x** nas configurações do projeto. Se a tela de importação ainda mostrar *Possible configuration mismatch* depois de o commit que arquiva `Dockerfile.vercel` chegar ao GitHub, atualize a página de importação.
 
 Cadastre estas variáveis no escopo **Production**. O [modelo sem valores reais](../.env.vercel.example) está no repositório. No painel da Vercel, insira apenas o **valor** de cada uma, sem copiar comentários nem `=`. Não copie `.env` ou `.env.local` do computador.
 
