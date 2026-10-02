@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { session } from '@/modules/auth/session';
 import { safeError, type ActionResult } from '@/lib/result';
 import { log } from '@/lib/logger';
-import { candidateDetailsSchema, entrySchema } from '@/modules/candidates/details';
+import { candidateDetailsSchema, entrySchema, initialEntriesSchema } from '@/modules/candidates/details';
 const uuid=z.uuid();
 const text=z.string().trim().min(1).max(10000);
 const optional=z.string().max(10000);
@@ -15,7 +15,8 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
   const str=(key:string)=>text.parse(get(key));
   const opt=(key:string)=>optional.parse(get(key));
   const flag=(key:string)=>get(key)==='on'||get(key)==='true';
-  const details=()=>candidateDetailsSchema.parse({secondary_phone:opt('secondary_phone'),neighborhood:opt('neighborhood'),driver_license:opt('driver_license'),portfolio_url:opt('portfolio_url'),travel_available:flag('travel_available'),relocation_available:flag('relocation_available')});
+  const details=()=>candidateDetailsSchema.parse({secondary_phone:opt('secondary_phone'),neighborhood:opt('neighborhood'),driver_license:opt('driver_license'),portfolio_url:opt('portfolio_url'),travel_available:flag('travel_available'),relocation_available:flag('relocation_available'),personal_competencies:JSON.parse(opt('personal_competencies')||'[]')});
+  const initialEntries=()=>initialEntriesSchema.parse(JSON.parse(z.string().max(600000).parse(get('initial_entries'))||'[]'));
   const skills=()=>z.array(z.string().trim().min(1).max(100)).max(30).parse(JSON.parse(opt('skills')||'[]'));
   const staffCurriculum=()=>{
     const data=z.object({full_name:z.string().trim().min(2).max(160),email:z.email(),phone:z.string().max(30),city:z.string().max(100),state:z.string().max(2),headline:z.string().max(160),summary:z.string().max(4000),professional_url:z.union([z.literal(''),z.url().refine(value=>value.startsWith('https://'))]),availability:z.string().max(100),work_model:z.string().max(30),source:z.string().trim().min(3).max(100),processing_purpose:z.string().trim().min(3).max(200),legal_basis:z.string().trim().max(200)}).parse(Object.fromEntries(form));
@@ -28,11 +29,11 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
     switch(op) {
       case 'profile': {
         const parsed=z.object({full_name:z.string().min(2).max(160),email:z.string().optional(),phone:z.string().max(30),city:z.string().max(100),state:z.string().max(2),headline:z.string().max(160),summary:z.string().max(4000),professional_url:z.union([z.literal(''),z.url().refine(u=>u.startsWith('https://'))])}).parse(Object.fromEntries(form));
-        result=await client.rpc('save_candidate',{p_data:{...parsed,additional_info:details(),skills:skills(),availability:opt('availability'),work_model:opt('work_model'),interests:z.array(uuid).max(10).parse(form.getAll('interests'))},...(get('candidate_id')?{p_candidate_id:id('candidate_id')}:{})});
+        result=await client.rpc('save_candidate',{p_data:{...parsed,additional_info:details(),skills:skills(),initial_entries:initialEntries(),availability:opt('availability'),work_model:opt('work_model'),interests:z.array(uuid).max(10).parse(form.getAll('interests'))},...(get('candidate_id')?{p_candidate_id:id('candidate_id')}:{})});
         break;
       }
       case 'manual-candidate': {
-        result=await client.rpc('create_manual_candidate',{p_data:staffCurriculum()});
+        result=await client.rpc('create_manual_candidate',{p_data:{...staffCurriculum(),initial_entries:initialEntries()}});
         if(result.data) destination=`/rh/candidatos/${result.data}`;
         break;
       }

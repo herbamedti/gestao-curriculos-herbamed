@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { session } from '@/modules/auth/session';
-import { PageHeading, Empty, Badge, date } from '@/ui/common';
+import { PageHeading, Badge } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { CurriculumFields, InterestFields, CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
-import { EntryFields } from '@/modules/candidates/entry-fields';
-import { entryKinds, entryDetails } from '@/modules/candidates/details';
+import { CurriculumEntryCards } from '@/modules/candidates/entry-cards';
+import { TrajectoryCards } from '@/modules/candidates/trajectory-cards';
+import { entryKindLabel, entryDetails } from '@/modules/candidates/details';
 import { mutate } from '@/modules/actions';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 
@@ -45,28 +46,11 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
           <Select name="work_model" label="Modelo preferido" value={profile?.work_model}><option value="">Selecione</option><option>Presencial</option><option>Híbrido</option><option>Remoto</option></Select>
         </div>
         <InterestFields areas={areas||[]} interests={interests} error={!!areasError} />
+        {!profile && <CurriculumEntryCards />}
       </ActionForm>
     </div>}
 
-    {tab==='trajetoria'&&<div className="split">
-      <div className="card"><h2>Sua trajetória</h2><p className="muted">Adicione experiências, formação acadêmica, cursos, certificações e idiomas. Para candidatar-se, basta uma experiência ou formação com nome e instituição.</p>
-        {entries.length?entries.map(entry=><div className="message" key={entry.id}>
-          <strong>{entryKinds[entry.kind]||entry.kind}: {entry.title}</strong>
-          <p>{entry.organization}{entry.start_date?` · ${date(entry.start_date)}`:''}{entry.end_date?` – ${date(entry.end_date)}`:''}</p>
-          {entryDetails(entry)&&<p className="muted">{entryDetails(entry)}</p>}
-          {entry.description&&<p>{entry.description}</p>}
-          <details><summary>Editar informação</summary><ActionForm action={mutate} submit="Salvar alteração">
-            <Hidden name="op" value="edit-entry" /><Hidden name="candidate_id" value={profile!.id} /><Hidden name="entry_id" value={entry.id} />
-            <EntryFields entry={entry} />
-          </ActionForm></details>
-          <ActionForm action={mutate} submit="Remover" confirm="Remover esta informação do currículo?"><Hidden name="op" value="delete-entry" /><Hidden name="candidate_id" value={profile!.id} /><Hidden name="entry_id" value={entry.id} /></ActionForm>
-        </div>):<Empty title="Sua trajetória começa aqui" description="Adicione uma experiência profissional ou formação para completar o currículo." icon="history_edu" />}
-      </div>
-      <div className="card"><h2>Adicionar informação</h2>{profile?<ActionForm action={mutate} submit="Adicionar ao currículo">
-        <Hidden name="op" value="entry" /><Hidden name="candidate_id" value={profile.id} />
-        <EntryFields />
-      </ActionForm>:<p>Salve seus dados pessoais antes de adicionar sua trajetória.</p>}</div>
-    </div>}
+    {tab==='trajetoria'&&<div className="card"><h2>Sua trajetória</h2><p className="muted">Adicione experiências, histórico acadêmico, cursos, certificados e idiomas em seus respectivos cards. Para candidatar-se, basta uma experiência ou formação com nome e instituição.</p>{profile?<TrajectoryCards candidateId={profile.id} entries={entries} />:<p>Comece pelo cadastro em Dados e habilidades; os mesmos cards estão disponíveis lá para salvar junto do currículo inicial.</p>}</div>}
 
     {tab==='revisao'&&<div className="split">
       <div className="card"><h2>Revisão do currículo</h2>
@@ -74,7 +58,7 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
           <p>{profile.email} · {profile.phone||'Telefone pendente'}</p><p className="detail-body">{profile.summary||'Resumo profissional pendente.'}</p>
           <CurriculumExtraSummary candidate={profile} />
           <p><strong>Habilidades:</strong> {profile.skills.join(', ')||'Pendente'}</p>
-          <h3>Trajetória</h3>{entries.length?entries.map(entry=><p key={entry.id}><strong>{entry.title}</strong> · {entry.organization}<br /><small>{entryKinds[entry.kind]||entry.kind}{entryDetails(entry)?` · ${entryDetails(entry)}`:''}</small></p>):<p className="muted">Nenhuma informação adicionada.</p>}
+          <h3>Trajetória</h3>{entries.length?entries.map(entry=><p key={entry.id}><strong>{entry.title}</strong> · {entry.organization}<br /><small>{entryKindLabel(entry.kind)}{entryDetails(entry)?` · ${entryDetails(entry)}`:''}</small></p>):<p className="muted">Nenhuma informação adicionada.</p>}
           <a className="button outlined" href={`/api/curriculos/${profile.id}/pdf`}>Exportar currículo em PDF</a>
         </>:<p>Salve seus dados para visualizar o currículo.</p>}
       </div>

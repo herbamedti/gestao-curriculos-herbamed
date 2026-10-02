@@ -1,5 +1,7 @@
 # Banco de dados
 
+`202610020003_curriculum_sections.sql` valida competências pessoais em `additional_info` e grava trajetória inicial em `profile_entries` na mesma transação das RPCs de criação. Preserva autorização/rate limit dos helpers anteriores, restringe o lote a 50 itens e bloqueia reinclusão inicial em perfil já existente. As funções auxiliares não são expostas a usuários comuns. Atualizações parciais de detalhes preservam campos novos omitidos por clientes antigos.
+
 `supabase/migrations` define o esquema e RLS. `202609230001_core.sql` cria entidades, índices, permissões e operações base. `202609230002_operations.sql` cria operações RH, privacidade e Storage histórico. `202609280002_structured_curriculum.sql` exige dados essenciais do currículo e dispensa documento na nova candidatura. `202609280003_curriculum_export_audit.sql` autoriza e audita a exportação PDF. `supabase/seed.sql` contém apenas dados fictícios locais.
 
 `202609280004_staff_curriculum_and_job_link.sql` amplia o cadastro manual, permite ao RH editar perfis manuais e do portal (sem trocar o e-mail de login) e adiciona vínculo manual com vaga via RPC. A escrita direta nas tabelas de domínio continua negada; a operação exige permissão efetiva, MFA, justificativa, currículo completo e vaga publicada.

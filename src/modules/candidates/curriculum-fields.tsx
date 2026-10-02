@@ -14,6 +14,7 @@ export function CurriculumFields({ candidate }: { candidate?: Candidate | null }
     <Select name="driver_license" label="Habilitação (opcional)" value={details.driver_license}><option value="">Não informado</option>{['A', 'B', 'AB', 'C', 'AC', 'D', 'AD', 'E', 'AE'].map(category => <option key={category}>{category}</option>)}</Select>
     <div className="availability-checks"><label className="check"><input name="travel_available" type="checkbox" defaultChecked={details.travel_available} />Disponibilidade para viagens</label><label className="check"><input name="relocation_available" type="checkbox" defaultChecked={details.relocation_available} />Disponibilidade para mudança de cidade</label></div>
     <div className="full"><EditableList name="skills" label="Habilidades" initial={candidate?.skills || []} chips maxItems={30} maxLength={100} /></div>
+    <div className="full"><EditableList name="personal_competencies" label="Competências Pessoais" inputLabel="Nova competência pessoal" placeholder="Ex.: Trabalho em equipe" initial={details.personal_competencies} chips maxItems={30} maxLength={100} /></div>
   </>;
 }
 
@@ -24,5 +25,5 @@ export function InterestFields({ areas, interests = [], error = false }: { areas
 export function CurriculumExtraSummary({ candidate }: { candidate: Candidate }) {
   const details = candidateDetails(candidate.additional_info);
   const information = [details.secondary_phone && `Telefone alternativo: ${details.secondary_phone}`, details.neighborhood && `Bairro: ${details.neighborhood}`, details.driver_license && `Habilitação: ${details.driver_license}`, details.travel_available && 'Disponível para viagens', details.relocation_available && 'Disponível para mudança de cidade'];
-  return <>{information.filter(Boolean).length > 0 && <p>{information.filter(Boolean).join(' · ')}</p>}{candidate.professional_url && <p><a className="text-link" href={candidate.professional_url} target="_blank" rel="noreferrer">LinkedIn / link profissional</a></p>}{details.portfolio_url && <p><a className="text-link" href={details.portfolio_url} target="_blank" rel="noreferrer">GitHub / portfólio</a></p>}</>;
+  return <>{information.filter(Boolean).length > 0 && <p>{information.filter(Boolean).join(' · ')}</p>}{candidate.professional_url && <p><a className="text-link" href={candidate.professional_url} target="_blank" rel="noreferrer">LinkedIn / link profissional</a></p>}{details.portfolio_url && <p><a className="text-link" href={details.portfolio_url} target="_blank" rel="noreferrer">GitHub / portfólio</a></p>}{details.personal_competencies.length > 0 && <section><h3>Competências Pessoais</h3><ul className="skill-cards">{details.personal_competencies.map((item,index)=><li key={index}>{item}</li>)}</ul></section>}</>;
 }

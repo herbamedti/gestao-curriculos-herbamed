@@ -2,6 +2,8 @@ export type ActionResult = { ok: boolean; message: string; redirect?: string };
 export const initialResult: ActionResult = { ok: false, message: '' };
 export function safeError(code?: string, message?: string): ActionResult {
   const known: Record<string, string> = {
+    invalid_initial_entries: 'Revise as informações adicionadas aos cards de trajetória. Nenhum dado foi salvo.',
+    initial_profile_exists: 'Este currículo já foi cadastrado. Recarregue a página para editar os dados e adicionar informações de trajetória.',
     catalog_in_use: 'Este cadastro está em uso. Desative-o para impedir novas seleções e preservar os registros existentes.',
     inactive_catalog_item: 'A opção selecionada foi desativada. Atualize a página e escolha uma opção ativa.',
     invalid_entry_dates: 'Uma experiência ou formação em andamento não deve ter data de fim.',

@@ -1,7 +1,8 @@
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from 'pdf-lib';
 import { z } from 'zod';
 import { db } from '@/lib/supabase';
-import { candidateDetails, entryDetails } from '@/modules/candidates/details';
+import { candidateDetails, entryDetails, entryPeriod } from '@/modules/candidates/details';
+import { textListItems } from '@/ui/list-items';
 
 export const runtime='nodejs';
 const labels:Record<string,string>={experience:'EXPERIÊNCIA PROFISSIONAL',education:'FORMAÇÃO ACADÊMICA',course:'CURSOS',certification:'CERTIFICAÇÕES',language:'IDIOMAS'};
@@ -69,7 +70,17 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}) {
       y-=spacing;
     }
   };
-  const section=(title:string)=>{ensure(42);y-=16;page.drawText(title,{x:left,y,size:10,font:bold,color:green});y-=17;page.drawLine({start:{x:left,y:y+9},end:{x:pageWidth-left,y:y+9},thickness:0.6,color:rgb(0.81,0.86,0.82)});};
+  const section=(title:string,contentHeight=24)=>{ensure(42+contentHeight);y-=16;page.drawText(title,{x:left,y,size:10,font:bold,color:green});y-=17;page.drawLine({start:{x:left,y:y+9},end:{x:pageWidth-left,y:y+9},thickness:0.6,color:rgb(0.81,0.86,0.82)});};
+  const bullet=(value:string)=>{
+    const wrapped=lines(printable(value,regular),regular,10,width-14);
+    ensure(Math.min(wrapped.length*15,735));
+    wrapped.forEach((line,index)=>{
+      ensure(15);
+      if(index===0)page.drawText('•',{x:left+2,y,size:10,font:regular,color:dark});
+      if(line)page.drawText(line,{x:left+14,y,size:10,font:regular,color:dark});
+      y-=15;
+    });
+  };
 
   page.drawRectangle({x:0,y:825,width:pageWidth,height:17,color:green});
   write(person.full_name,22,true,green,29);
@@ -83,17 +94,19 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}) {
   if(extra)write(extra,9,false,muted,14);
   if(person.summary){section('RESUMO PROFISSIONAL');write(person.summary,10);}
   if(person.skills.length){section('HABILIDADES');write(person.skills.join('  ·  '),10);}
+  if(details.personal_competencies.length){section('COMPETÊNCIAS PESSOAIS');write(details.personal_competencies.join('  ·  '),10);}
   for(const kind of ['experience','education','course','certification','language']) {
     const items=(entries||[]).filter(entry=>entry.kind===kind);
     if(!items.length)continue;
-    section(labels[kind]);
+    section(labels[kind],55);
     for(const item of items){
       ensure(55);
       write(item.title,11,true,dark,16);
-      const period=[item.start_date,item.end_date].filter(Boolean).map(value=>value==='Atual'?'Atual':new Intl.DateTimeFormat('pt-BR',{month:'2-digit',year:'numeric',timeZone:'UTC'}).format(new Date(`${value}T12:00:00Z`))).join(' – ');
-      write([item.organization,period].filter(Boolean).join('  |  '),9,false,muted,15);
+      const period=entryPeriod(item);
+      if(item.organization)write(item.organization,9,false,muted,15);
       if(entryDetails(item))write(entryDetails(item),9,false,muted,15);
-      if(item.description)write(item.description,10);
+      if(period)write(period,9,false,muted,15);
+      textListItems(item.description).forEach(bullet);
       y-=8;
     }
   }

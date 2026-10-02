@@ -4,9 +4,15 @@ Os cadastros do RH e do candidato compartilham os mesmos campos de currículo. A
 
 ## Currículo
 
+As descrições de Experiência Profissional, Histórico Acadêmico, Cursos, Certificados e Idiomas usam listas editáveis. É possível adicionar um detalhe por vez ou vários separados por `;`, editar e remover cada item. A revisão e o PDF exibem marcadores, com recuo nas linhas continuadas. Idioma, nível e demais campos continuam separados; a lista de detalhes é opcional. A coluna `profile_entries.description` continua sendo texto com um item por linha; conteúdo legado com ponto e vírgula é preservado ao abrir a edição. Este ajuste não exige migration nem variável nova.
+
 Além dos dados existentes, o cadastro permite telefone alternativo, bairro, habilitação, um segundo link profissional (GitHub, portfólio ou site), disponibilidade para viagens e mudança de cidade. Os campos são opcionais e gravados em `candidates.additional_info` por RPC autorizado. Não foram adicionados idade, estado civil ou documentos de identificação como requisitos de candidatura.
 
 Habilidades são adicionadas por texto ou Enter e aparecem como cards removíveis. Não há duplicação por diferença de maiúsculas/minúsculas; são aceitas até 30 habilidades de 100 caracteres. Um texto ainda não adicionado impede o envio para evitar perda acidental.
+
+Competências Pessoais têm um card independente de habilidades técnicas, com inclusão e remoção de até 30 itens de 100 caracteres, armazenados em `additional_info.personal_competencies` e exibidos no perfil, revisão e PDF.
+
+Experiência Profissional, Histórico Acadêmico, Cursos, Certificados e Idiomas têm cards próprios. No cadastro inicial do RH e do candidato, os itens são adicionados e removidos em memória e enviados em `initial_entries` (até 50). O botão final salva candidato, competências e trajetória na mesma transação; erro em qualquer item desfaz o cadastro inteiro. Rascunhos preenchidos mas não adicionados bloqueiam o envio com orientação. Depois do cadastro, cada card mantém adição, edição e remoção via RPCs existentes. A inclusão inicial do candidato é serializada por conta para impedir duplicação em reenvios.
 
 A trajetória mantém experiência, formação, curso, certificação e idioma. Agora inclui nível/semestre, situação, carga horária e período em texto para datas desconhecidas. Idiomas dispensam instituição. Experiência e formação continuam exigindo instituição. Não ter uma data final não significa automaticamente que uma formação ou experiência está em andamento; a situação é explícita. A revisão do currículo e o PDF incluem os novos dados.
 
@@ -16,6 +22,8 @@ A trajetória mantém experiência, formação, curso, certificação e idioma. 
 
 Responsabilidades, requisitos e benefícios são listas de itens adicionáveis, editáveis e removíveis. A gravação mantém as colunas de texto existentes, com um item por linha; textos antigos são preservados. O detalhe público apresenta listas com marcadores.
 
+Os três campos aceitam vários itens separados por `;`, ao clicar em Adicionar ou pressionar Enter. Espaços e fragmentos vazios são removidos; duplicados não são incluídos e lotes que excedam o limite são rejeitados integralmente. A separação só ocorre na inclusão nova, sem reinterpretar conteúdo já cadastrado. A ajuda abaixo do campo tem espaçamento próprio e os itens adicionados têm fundo suave diferente do restante do card.
+
 Nível de experiência e tipo de emprego usam `experience_levels` e `employment_types`. Contrato (CLT, PJ etc.) continua sendo um campo separado do tipo de emprego (tempo integral, meio período etc.). Os catálogos trazem opções comuns iniciais, editáveis e desativáveis pelo RH autorizado.
 
 Configurações oferece inclusão, edição, ativação/desativação e exclusão para departamentos, áreas de interesse, tags, pools, níveis de experiência e tipos de emprego. Exclusões de cadastros vinculados são bloqueadas e orientam a desativação. Os novos catálogos têm RLS, apenas leitura direta e auditoria; mutações exigem `settings.manage`, incluindo o MFA vigente. Vagas existentes mantêm referências a opções desativadas.
@@ -23,6 +31,8 @@ Configurações oferece inclusão, edição, ativação/desativação e exclusã
 ## Atualização e validação
 
 Aplicar `202610020002_curriculum_and_job_catalogs.sql` no Supabase hospedado antes de publicar o código. Nenhuma variável de ambiente nova é necessária. A migration mantém as implementações anteriores de autorização e limites como funções privadas, acessadas por wrappers autorizados, e preserva dados complementares quando clientes antigos não enviam esses campos.
+
+Aplicar também `202610020003_curriculum_sections.sql` antes desta versão. Ela acrescenta validação de competências e gravação inicial da trajetória, sem criar tabelas, mudar as políticas RLS ou ampliar permissões. Atualizações parciais antigas de `additional_info` preservam competências já cadastradas; enviar a lista vazia remove-as explicitamente. Os helpers novos continuam privados e não executáveis por `anon`/`authenticated`.
 
 O menu de RH passa a consultar permissões em uma única chamada. `requireStaff` é reaproveitado dentro da requisição, consultas independentes do perfil rodam em paralelo e a atualização redundante após salvar foi removida. Isso reduz chamadas; não mede nem garante a latência da hospedagem.
 

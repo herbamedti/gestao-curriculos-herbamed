@@ -22,11 +22,13 @@ try{
 
   await page.goto('http://localhost:3000/candidato/perfil?etapa=trajetoria');
   if(!await page.getByText('Graduação em Qualidade Fictícia').count()){
-    await page.getByLabel('Cargo, curso ou título').last().fill('Graduação em Qualidade Fictícia');
-    await page.getByLabel('Empresa ou instituição').last().fill('Instituição Exemplo');
-    await page.locator('select[name=kind]').last().selectOption('education');
-    await page.getByRole('button',{name:'Adicionar ao currículo'}).click();
-    await page.getByRole('status').waitFor({timeout:15000});
+    const section=page.getByRole('region',{name:'Histórico Acadêmico',exact:true});
+    await section.getByText('Adicionar formação',{exact:true}).click();
+    const form=section.locator('form').filter({has:page.locator('input[name="op"][value="entry"]')});
+    await form.getByLabel('Curso ou formação').fill('Graduação em Qualidade Fictícia');
+    await form.getByLabel('Empresa ou instituição').fill('Instituição Exemplo');
+    await form.getByRole('button',{name:'Adicionar ao currículo'}).click();
+    await form.getByRole('status').waitFor({timeout:15000});
   }
 
   await page.goto('http://localhost:3000/candidato/perfil?etapa=revisao');

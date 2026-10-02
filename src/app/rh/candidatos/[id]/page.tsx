@@ -6,11 +6,8 @@ import { StaffCurriculumForm } from '@/modules/candidates/staff-curriculum-form'
 import { PageHeading, Badge, date } from '@/ui/common';
 import { ActionForm, Hidden, Field, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
-import { EntryFields } from '@/modules/candidates/entry-fields';
-import { entryDetails } from '@/modules/candidates/details';
+import { TrajectoryCards } from '@/modules/candidates/trajectory-cards';
 import { CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
-
-const labels:Record<string,string>={experience:'Experiência profissional',education:'Formação acadêmica',course:'Curso',certification:'Certificação',language:'Idioma'};
 
 export default async function CandidateDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
@@ -46,19 +43,7 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
     <div className="split"><div>
       <div className="card"><h2>Currículo na plataforma</h2><p className="detail-body">{person.summary||'Sem resumo profissional.'}</p><p><strong>Habilidades:</strong> {person.skills.join(', ')||'Não informadas'}</p><CurriculumExtraSummary candidate={person} /><p className="muted">Atualizado em {date(person.updated_at,true)}</p></div>
       {canEdit&&<div className="card"><h2>Editar dados do currículo</h2><p className="muted">As alterações ficam visíveis também para a pessoa candidata que cadastrou o próprio perfil.</p><StaffCurriculumForm candidate={person} areas={areasResult.data||[]} areasError={!!areasResult.error} interests={interestsResult.data?.map(item=>item.area_id)||[]} /></div>}
-      <div className="card"><h2>Experiência e formação</h2>{entries.length?entries.map(entry=><div className="message" key={entry.id}>
-        <strong>{labels[entry.kind]||entry.kind}: {entry.title}</strong><p>{entry.organization}{entry.start_date?` · ${date(entry.start_date)}`:''}{entry.end_date?` – ${date(entry.end_date)}`:''}</p>{entryDetails(entry)&&<p className="muted">{entryDetails(entry)}</p>}{entry.description&&<p>{entry.description}</p>}
-        {canEdit&&<><details><summary>Editar informação</summary><ActionForm action={mutate} submit="Salvar alteração">
-          <Hidden name="op" value="edit-entry" /><Hidden name="candidate_id" value={id} /><Hidden name="entry_id" value={entry.id} />
-          <EntryFields entry={entry} />
-        </ActionForm></details>
-        <ActionForm action={mutate} submit="Remover informação" confirm="Remover esta informação do currículo?"><Hidden name="op" value="delete-entry" /><Hidden name="candidate_id" value={id} /><Hidden name="entry_id" value={entry.id} /></ActionForm></>}
-      </div>):<p className="muted">Nenhuma informação registrada.</p>}
-        {canEdit&&<><h3>Adicionar informação</h3><ActionForm action={mutate} submit="Adicionar ao currículo">
-          <Hidden name="op" value="entry" /><Hidden name="candidate_id" value={id} />
-          <EntryFields />
-        </ActionForm></>}
-      </div>
+      <div className="card"><h2>Trajetória profissional e acadêmica</h2><TrajectoryCards candidateId={id} entries={entries} canEdit={canEdit} /></div>
       <div className="card"><h2>Vagas vinculadas</h2>{applications.length?applications.map(application=><div className="file-row" key={application.id}><div><strong>{jobs.find(job=>job.id===application.job_id)?.title||'Vaga'}</strong><small>{date(application.created_at)}</small></div><Link className="text-link" href={`/rh/candidaturas/${application.id}`}>Ver processo</Link></div>):<p className="muted">Nenhuma vaga vinculada.</p>}</div>
       <div className="card"><h2>Mensagens</h2>{messagesResult.data?.map(message=><div className="message" key={message.id}><strong>{message.subject}</strong><p>{message.body}</p><small>{date(message.created_at,true)}</small></div>)}</div>
     </div><aside>

@@ -18,7 +18,7 @@ export function JobEditor({job,departments,experienceLevels,employmentTypes}:{jo
       <Select name="employment_type_id" label="Tipo de emprego" value={job?.employment_type_id||''}><option value="">Não definido</option>{employmentTypes.filter(item=>item.active!==false||item.id===job?.employment_type_id).map(item=><option key={item.id} value={item.id}>{item.name}{item.active===false?' (inativo)':''}</option>)}</Select>
       <Field name="openings" label="Quantidade de vagas" type="number" value={job?.openings||1} min={1} max={1000}/><Field name="deadline" label="Prazo final" type="date" value={job?.deadline?.slice(0,10)||''}/>
       <div className="full"><TextArea name="description" label="Descrição" value={job?.description} required rows={7}/></div>
-      {(['responsibilities','requirements','benefits'] as const).map((name,index)=><div className="full" key={name}><EditableList name={name} label={['Responsabilidades','Requisitos','Benefícios'][index]} initial={jobItems(job?.[name]||'')} maxItems={30} maxLength={10000}/></div>)}
+      {(['responsibilities','requirements','benefits'] as const).map((name,index)=><div className="full" key={name}><EditableList name={name} label={['Responsabilidades','Requisitos','Benefícios'][index]} initial={jobItems(job?.[name]||'')} maxItems={30} maxLength={10000} bulk/></div>)}
     </div>
   </ActionForm></div>;
 }

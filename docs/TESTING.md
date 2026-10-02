@@ -1,5 +1,9 @@
 # Testes
 
+As listas de detalhes da trajetória são verificadas no smoke de campos: inclusão por `;` e Enter, remoção/edição de item, prevenção de inclusão involuntária da experiência ao usar Enter, rascunho contendo apenas detalhes, persistência no cadastro inicial dos dois perfis e alteração pelo candidato/gestor. O PDF inclui marcadores e alinhamento das linhas continuadas; as capturas renderizadas também verificam títulos junto ao primeiro registro da seção.
+
+`supabase/tests/008_curriculum_sections.sql` verifica gravação inicial atômica, os cinco tipos de trajetória, competências pessoais, compatibilidade com atualizações antigas, bloqueio de duplicação, negação aos helpers e preservação do MFA. O smoke `node scripts/smoke-curriculum-fields.mjs` cobre cards completos do RH/candidato, edição, rascunho não adicionado, inclusão múltipla por `;`, espaçamento da ajuda e ausência de overflow em 390 px, com contas fictícias locais removidas após o teste.
+
 `supabase/tests/007_curriculum_catalogs.sql` cobre dados opcionais, idioma sem instituição, compatibilidade com clientes antigos, limites de acesso a catálogos/navegação e exclusão protegida de opções vinculadas. `node scripts/smoke-curriculum-fields.mjs` (após build) valida formulários do candidato e RH com MFA, skills, idioma, exportação PDF, edição de catálogo e publicação de vaga com marcadores, usando somente dados fictícios locais.
 
 `npm run check` executa lint, TS, Vitest e build. `npm run test:db` roda pgTAP no Supabase local e verifica isolamento candidato, gravação direta bloqueada, MFA e candidatura aceita apenas com currículo estruturado completo, sem dependência de Storage. `npm run test:e2e` cobre a jornada local do portal; antes de produção, completar testes de PDF/RBAC, OAuth Azure real, e-mail, recuperação, fluxos LGPD e telas responsivas com tecnologias assistivas.

@@ -2,13 +2,14 @@ import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
 import type { Database } from '@/lib/database.types';
 import { CurriculumFields, InterestFields } from './curriculum-fields';
+import { CurriculumEntryCards } from './entry-cards';
 
 type Candidate=Database['public']['Tables']['candidates']['Row'];
 type Area={id:string;name:string};
 
 export function StaffCurriculumForm({candidate,areas,interests=[],areasError=false}:{candidate?:Candidate;areas:Area[];interests?:string[];areasError?:boolean}) {
   const manual=!candidate?.user_id;
-  return <ActionForm action={mutate} submit={candidate?'Salvar currículo':'Cadastrar e continuar para experiência e formação'}>
+  return <ActionForm action={mutate} submit={candidate?'Salvar currículo':'Cadastrar currículo'}>
     <Hidden name="op" value={candidate?'staff-curriculum':'manual-candidate'} />
     {candidate&&<Hidden name="candidate_id" value={candidate.id} />}
     <div className="form-grid">
@@ -24,6 +25,7 @@ export function StaffCurriculumForm({candidate,areas,interests=[],areasError=fal
       <div className="full"><TextArea name="summary" label="Resumo profissional" value={candidate?.summary||''} rows={5} /></div>
     </div>
     <InterestFields areas={areas} interests={interests} error={areasError} />
+    {!candidate && <CurriculumEntryCards />}
     {manual?<><h3>Origem e finalidade do cadastro</h3><div className="form-grid">
       <Field name="source" label="Origem (indicação, evento, cadastro manual…)" value={candidate?.source} required maxLength={100} />
       <Field name="processing_purpose" label="Finalidade do tratamento" value={candidate?.processing_purpose||'Recrutamento e seleção'} required maxLength={200} />

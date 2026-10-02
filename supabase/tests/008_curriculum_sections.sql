@@ -1,0 +1,41 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set search_path to public,extensions;
+select plan(20);
+insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data) values
+ ('00000000-0000-4000-8000-000000000081','sections.rh@example.test',now(),'{}'),
+ ('00000000-0000-4000-8000-000000000082','sections.candidate@example.test',now(),'{}');
+insert into public.staff(user_id,display_name) values('00000000-0000-4000-8000-000000000081','RH fictício');
+insert into public.staff_roles(user_id,role_id) select '00000000-0000-4000-8000-000000000081',id from public.roles where name='Superadministrador';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000082',true);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000082","role":"authenticated","aal":"aal1","app_metadata":{"provider":"email"}}',true);
+select throws_ok($sql$select public.save_candidate('{"full_name":"Candidato Exemplo","initial_entries":[{"kind":"education","title":"Superior","organization":""}]}')$sql$,'P0001','invalid_initial_entries','Item inválido rejeitado');
+select is((select count(*)::integer from public.candidates where user_id=auth.uid()),0,'Erro desfaz também o cadastro principal');
+select lives_ok($sql$select public.save_candidate('{"full_name":"Candidato Exemplo","additional_info":{"personal_competencies":["Trabalho em equipe"]},"initial_entries":[{"kind":"experience","title":"Analista","organization":"Empresa fictícia","status":"Atual","duration_hours":null},{"kind":"education","title":"Superior","organization":"Universidade fictícia"},{"kind":"certification","title":"Certificado fictício","organization":"Instituição fictícia","duration_hours":9},{"kind":"language","title":"Inglês","level":"Intermediário"}]}')$sql$,'Candidato salva todas as seções em uma transação');
+select is((select count(*)::integer from public.profile_entries where candidate_id=(select id from public.candidates where user_id=auth.uid())),4,'Quatro tipos de trajetória persistidos');
+select is((select additional_info->'personal_competencies' from public.candidates where user_id=auth.uid()),'["Trabalho em equipe"]'::jsonb,'Competências persistidas');
+select lives_ok($sql$select public.save_candidate('{"full_name":"Candidato Exemplo","additional_info":{"driver_license":"B"}}')$sql$,'Cliente anterior edita detalhes');
+select is((select additional_info->'personal_competencies' from public.candidates where user_id=auth.uid()),'["Trabalho em equipe"]'::jsonb,'Cliente anterior preserva competências');
+select throws_ok($sql$select public.save_candidate('{"full_name":"Candidato Exemplo","initial_entries":[{"kind":"language","title":"Inglês"}]}')$sql$,'P0001','initial_profile_exists','Repetição não duplica trajetória');
+select is((select count(*)::integer from public.profile_entries where candidate_id=(select id from public.candidates where user_id=auth.uid())),4,'Nenhum item duplicado');
+select throws_ok($sql$select public.save_candidate('{"full_name":"Candidato Exemplo","additional_info":{"personal_competencies":[23]}}')$sql$,'P0001','invalid_candidate_details','Competência não textual rejeitada');
+select throws_ok($sql$select public.create_manual_candidate('{}')$sql$,'42501','permission_denied','Candidato não cria cadastro manual');
+reset role;
+select ok(not has_function_privilege('authenticated','private.insert_initial_entries(uuid,jsonb)','EXECUTE'),'Helper não acessível a authenticated');
+select ok(not has_function_privilege('anon','private.insert_initial_entries(uuid,jsonb)','EXECUTE'),'Helper não acessível a anon');
+set local role authenticated;
+
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000081',true);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000081","role":"authenticated","aal":"aal1","app_metadata":{"provider":"azure"}}',true);
+select throws_ok($sql$select public.create_manual_candidate('{}')$sql$,'42501','permission_denied','RH sem MFA não cadastra');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000081","role":"authenticated","aal":"aal2","app_metadata":{"provider":"azure"}}',true);
+select lives_ok($sql$select public.create_manual_candidate('{"full_name":"Pessoa Manual Exemplo","email":"sections.manual@example.test","source":"Teste local","processing_purpose":"Recrutamento","legal_basis":"Teste avaliado","additional_info":{"personal_competencies":["Comunicação"]},"initial_entries":[{"kind":"experience","title":"Analista","organization":"Empresa fictícia"},{"kind":"education","title":"Superior","organization":"Universidade fictícia"},{"kind":"course","title":"Curso fictício","organization":"Instituição fictícia"},{"kind":"certification","title":"Certificado fictício","organization":"Instituição fictícia","duration_hours":9},{"kind":"language","title":"Português","level":"Nativo"}]}')$sql$,'RH salva currículo completo no cadastro inicial');
+select is((select count(*)::integer from public.profile_entries where candidate_id=(select id from public.candidates where email='sections.manual@example.test')),5,'Cinco seções persistidas no cadastro manual');
+select throws_ok($sql$select public.create_manual_candidate('{"full_name":"Manual Inválido","email":"sections.invalid@example.test","source":"Teste local","processing_purpose":"Recrutamento","legal_basis":"Teste avaliado","initial_entries":[{"kind":"language","title":"Inglês"},{"kind":"experience","title":"Analista","organization":"Empresa fictícia","status":"Atual","end_date":"2026-10-02"}]}')$sql$,'P0001','invalid_entry_dates','Datas inválidas desfazem transação inteira');
+select is((select count(*)::integer from public.candidates where email='sections.invalid@example.test'),0,'Cadastro inválido não fica parcialmente salvo');
+select lives_ok($sql$select public.manage_candidate_curriculum((select id from public.candidates where email='sections.manual@example.test'),'{"full_name":"Pessoa Manual Exemplo","email":"sections.manual@example.test","source":"Teste local","processing_purpose":"Recrutamento","legal_basis":"Teste avaliado","additional_info":{"personal_competencies":[]}}')$sql$,'RH remove competências explicitamente');
+select is((select additional_info->'personal_competencies' from public.candidates where email='sections.manual@example.test'),'[]'::jsonb,'Remoção explícita persistida');
+reset role;
+select * from finish();
+rollback;
