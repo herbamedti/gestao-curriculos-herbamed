@@ -2,6 +2,9 @@ export type ActionResult = { ok: boolean; message: string; redirect?: string };
 export const initialResult: ActionResult = { ok: false, message: '' };
 export function safeError(code?: string, message?: string): ActionResult {
   const known: Record<string, string> = {
+    catalog_in_use: 'Este cadastro está em uso. Desative-o para impedir novas seleções e preservar os registros existentes.',
+    inactive_catalog_item: 'A opção selecionada foi desativada. Atualize a página e escolha uma opção ativa.',
+    invalid_entry_dates: 'Uma experiência ou formação em andamento não deve ter data de fim.',
     curriculum_incomplete: 'Complete os dados essenciais do currículo antes de se candidatar.',
     already_linked: 'Esta pessoa já está vinculada à vaga selecionada.',
     job_unavailable: 'A vaga não está disponível para vinculação.',

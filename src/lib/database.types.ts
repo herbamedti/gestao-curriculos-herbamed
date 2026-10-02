@@ -245,6 +245,7 @@ export type Database = {
       }
       candidates: {
         Row: {
+          additional_info: Json
           archived_at: string | null
           availability: string
           city: string
@@ -269,6 +270,7 @@ export type Database = {
           work_model: string
         }
         Insert: {
+          additional_info?: Json
           archived_at?: string | null
           availability?: string
           city?: string
@@ -293,6 +295,7 @@ export type Database = {
           work_model?: string
         }
         Update: {
+          additional_info?: Json
           archived_at?: string | null
           availability?: string
           city?: string
@@ -389,6 +392,24 @@ export type Database = {
           },
         ]
       }
+      employment_types: {
+        Row: {
+          active: boolean
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       evaluations: {
         Row: {
           application_id: string
@@ -436,6 +457,24 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      experience_levels: {
+        Row: {
+          active: boolean
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       interest_areas: {
         Row: {
@@ -614,6 +653,8 @@ export type Database = {
           deadline: string | null
           department_id: string | null
           description: string
+          employment_type_id: string | null
+          experience_level_id: string | null
           id: string
           openings: number
           published_at: string | null
@@ -637,6 +678,8 @@ export type Database = {
           deadline?: string | null
           department_id?: string | null
           description: string
+          employment_type_id?: string | null
+          experience_level_id?: string | null
           id?: string
           openings?: number
           published_at?: string | null
@@ -660,6 +703,8 @@ export type Database = {
           deadline?: string | null
           department_id?: string | null
           description?: string
+          employment_type_id?: string | null
+          experience_level_id?: string | null
           id?: string
           openings?: number
           published_at?: string | null
@@ -679,6 +724,20 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_employment_type_id_fkey"
+            columns: ["employment_type_id"]
+            isOneToOne: false
+            referencedRelation: "employment_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_experience_level_id_fkey"
+            columns: ["experience_level_id"]
+            isOneToOne: false
+            referencedRelation: "experience_levels"
             referencedColumns: ["id"]
           },
         ]
@@ -942,33 +1001,45 @@ export type Database = {
           candidate_id: string
           created_at: string
           description: string
+          duration_hours: number | null
           end_date: string | null
           id: string
           kind: string
+          level: string
           organization: string
+          period_text: string
           start_date: string | null
+          status: string
           title: string
         }
         Insert: {
           candidate_id: string
           created_at?: string
           description?: string
+          duration_hours?: number | null
           end_date?: string | null
           id?: string
           kind: string
+          level?: string
           organization?: string
+          period_text?: string
           start_date?: string | null
+          status?: string
           title: string
         }
         Update: {
           candidate_id?: string
           created_at?: string
           description?: string
+          duration_hours?: number | null
           end_date?: string | null
           id?: string
           kind?: string
+          level?: string
           organization?: string
+          period_text?: string
           start_date?: string | null
+          status?: string
           title?: string
         }
         Relationships: [
@@ -1197,6 +1268,10 @@ export type Database = {
         Args: { p_candidate_id: string }
         Returns: string[]
       }
+      delete_catalog: {
+        Args: { p_catalog: string; p_id: string }
+        Returns: undefined
+      }
       export_candidates: {
         Args: never
         Returns: {
@@ -1341,6 +1416,7 @@ export type Database = {
         Args: { p_job_id: string; p_status: string }
         Returns: undefined
       }
+      staff_navigation_permissions: { Args: never; Returns: string[] }
       submit_application: {
         Args: { p_answers: Json; p_job_id: string; p_policy_id: string }
         Returns: string

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { session } from '@/modules/auth/session';
 import { safeError, type ActionResult } from '@/lib/result';
 import { log } from '@/lib/logger';
+import { candidateDetailsSchema, entrySchema } from '@/modules/candidates/details';
 const uuid=z.uuid();
 const text=z.string().trim().min(1).max(10000);
 const optional=z.string().max(10000);
@@ -14,9 +15,11 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
   const str=(key:string)=>text.parse(get(key));
   const opt=(key:string)=>optional.parse(get(key));
   const flag=(key:string)=>get(key)==='on'||get(key)==='true';
+  const details=()=>candidateDetailsSchema.parse({secondary_phone:opt('secondary_phone'),neighborhood:opt('neighborhood'),driver_license:opt('driver_license'),portfolio_url:opt('portfolio_url'),travel_available:flag('travel_available'),relocation_available:flag('relocation_available')});
+  const skills=()=>z.array(z.string().trim().min(1).max(100)).max(30).parse(JSON.parse(opt('skills')||'[]'));
   const staffCurriculum=()=>{
     const data=z.object({full_name:z.string().trim().min(2).max(160),email:z.email(),phone:z.string().max(30),city:z.string().max(100),state:z.string().max(2),headline:z.string().max(160),summary:z.string().max(4000),professional_url:z.union([z.literal(''),z.url().refine(value=>value.startsWith('https://'))]),availability:z.string().max(100),work_model:z.string().max(30),source:z.string().trim().min(3).max(100),processing_purpose:z.string().trim().min(3).max(200),legal_basis:z.string().trim().max(200)}).parse(Object.fromEntries(form));
-    return {...data,skills:opt('skills').split(',').map(skill=>skill.trim()).filter(Boolean).slice(0,30),interests:z.array(uuid).max(10).parse(form.getAll('interests'))};
+    return {...data,additional_info:details(),skills:skills(),interests:z.array(uuid).max(10).parse(form.getAll('interests'))};
   };
   try {
     const op=str('op');
@@ -25,7 +28,7 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
     switch(op) {
       case 'profile': {
         const parsed=z.object({full_name:z.string().min(2).max(160),email:z.string().optional(),phone:z.string().max(30),city:z.string().max(100),state:z.string().max(2),headline:z.string().max(160),summary:z.string().max(4000),professional_url:z.union([z.literal(''),z.url().refine(u=>u.startsWith('https://'))])}).parse(Object.fromEntries(form));
-        result=await client.rpc('save_candidate',{p_data:{...parsed,skills:opt('skills').split(',').map(s=>s.trim()).filter(Boolean).slice(0,30),availability:opt('availability'),work_model:opt('work_model'),interests:z.array(uuid).max(10).parse(form.getAll('interests'))},...(get('candidate_id')?{p_candidate_id:id('candidate_id')}:{})});
+        result=await client.rpc('save_candidate',{p_data:{...parsed,additional_info:details(),skills:skills(),availability:opt('availability'),work_model:opt('work_model'),interests:z.array(uuid).max(10).parse(form.getAll('interests'))},...(get('candidate_id')?{p_candidate_id:id('candidate_id')}:{})});
         break;
       }
       case 'manual-candidate': {
@@ -41,7 +44,7 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
       }
       case 'entry':
       case 'edit-entry': {
-        const data={kind:z.enum(['experience','education','course','certification','language']).parse(get('kind')),title:z.string().trim().min(2).max(160).parse(get('title')),organization:z.string().trim().min(2).max(160).parse(get('organization')),start_date:opt('start_date'),end_date:opt('end_date'),description:opt('description')};
+        const data=entrySchema.parse({...Object.fromEntries(form),duration_hours:get('duration_hours')});
         result=op==='entry'?await client.rpc('save_profile_entry',{p_candidate_id:id('candidate_id'),p_data:data}):await client.rpc('update_profile_entry',{p_candidate_id:id('candidate_id'),p_entry_id:id('entry_id'),p_data:data});
         break;
       }
@@ -61,7 +64,8 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
       case 'job': {
         const data=z.object({title:z.string().min(3).max(160),city:z.string().min(2).max(100),state:z.string().max(2),work_model:z.enum(['Presencial','Híbrido','Remoto']),contract_type:z.string().min(2).max(50),description:z.string().min(20).max(10000),requirements:z.string().max(10000),responsibilities:z.string().max(10000),benefits:z.string().max(10000),department_id:z.union([uuid,z.literal('')]),openings:z.coerce.number().int().min(1).max(1000),deadline:z.string()}).parse(Object.fromEntries(form));
         const slug=data.title.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+crypto.randomUUID().slice(0,8);
-        result=await client.rpc('save_job',{p_data:{...data,deadline:data.deadline?new Date(`${data.deadline}T23:59:59-03:00`).toISOString():'',slug},...(get('job_id')?{p_job_id:id('job_id')}:{})});
+        const catalogs=z.object({experience_level_id:z.union([uuid,z.literal('')]),employment_type_id:z.union([uuid,z.literal('')])}).parse(Object.fromEntries(form));
+        result=await client.rpc('save_job',{p_data:{...data,...catalogs,deadline:data.deadline?new Date(`${data.deadline}T23:59:59-03:00`).toISOString():'',slug},...(get('job_id')?{p_job_id:id('job_id')}:{})});
         if(result.data) destination=`/rh/vagas/${result.data}`;
         break;
       }
@@ -80,7 +84,8 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
       case 'interview': result=await client.rpc('schedule_interview',{p_application_id:id('application_id'),p_starts_at:new Date(`${str('starts_at')}:00-03:00`).toISOString(),p_location:str('location'),p_duration:z.coerce.number().int().min(10).max(480).parse(get('duration'))});break;
       case 'message': result=await client.rpc('send_message',{p_candidate_id:id('candidate_id'),p_subject:str('subject'),p_body:str('body')});break;
       case 'notification': result=await client.rpc('mark_notification',{p_id:id('id')});break;
-      case 'catalog': result=await client.rpc('manage_catalog',{p_catalog:z.enum(['departments','interest_areas','tags','talent_pools']).parse(get('catalog')),p_name:str('name'),p_active:flag('active'),...(get('id')?{p_id:id('id')}:{})});break;
+      case 'catalog': result=await client.rpc('manage_catalog',{p_catalog:z.enum(['departments','interest_areas','tags','talent_pools','experience_levels','employment_types']).parse(get('catalog')),p_name:z.string().trim().min(2).max(100).parse(get('name')),p_active:flag('active'),...(get('id')?{p_id:id('id')}:{})});break;
+      case 'delete-catalog': result=await client.rpc('delete_catalog',{p_catalog:z.enum(['departments','interest_areas','tags','talent_pools','experience_levels','employment_types']).parse(get('catalog')),p_id:id('id')});break;
       case 'role': result=await client.rpc('manage_role',{p_name:str('name'),p_scope:z.enum(['all','assigned']).parse(get('scope')),p_mfa:flag('mfa'),p_permissions:z.array(z.string().max(80)).max(100).parse(form.getAll('permissions')),...(get('id')?{p_id:id('id')}:{})});break;
       case 'staff': result=await client.rpc('manage_staff',{p_email:z.email().parse(get('email')),p_name:str('name'),p_role_id:id('role_id'),p_active:flag('active')});break;
       case 'setting': {

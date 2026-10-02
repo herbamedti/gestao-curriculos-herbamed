@@ -2,19 +2,24 @@ import Link from 'next/link';
 import { session } from '@/modules/auth/session';
 import { PageHeading, Empty, Badge, date } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
+import { CurriculumFields, InterestFields, CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
+import { EntryFields } from '@/modules/candidates/entry-fields';
+import { entryKinds, entryDetails } from '@/modules/candidates/details';
 import { mutate } from '@/modules/actions';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 
-const entryKinds:Record<string,string>={experience:'Experiência profissional',education:'Formação acadêmica',course:'Curso',certification:'Certificação',language:'Idioma'};
-
 export default async function Profile({searchParams}:{searchParams:Promise<{etapa?:string}>}) {
   const {client,user}=await session();
-  const [{data:profile},{data:areas}]=await Promise.all([
+  const [{data:profile},{data:areas,error:areasError}]=await Promise.all([
     client.from('candidates').select('*').eq('user_id',user.id).maybeSingle(),
     client.from('interest_areas').select('id,name').eq('active',true).order('name'),
   ]);
-  const interests=profile?(await client.from('candidate_interests').select('area_id').eq('candidate_id',profile.id)).data?.map(i=>i.area_id)||[]:[];
-  const entries=profile?(await client.from('profile_entries').select('*').eq('candidate_id',profile.id).order('start_date',{ascending:false,nullsFirst:false})).data||[]:[];
+  const [interestResult,entryResult]=profile?await Promise.all([
+    client.from('candidate_interests').select('area_id').eq('candidate_id',profile.id),
+    client.from('profile_entries').select('*').eq('candidate_id',profile.id).order('start_date',{ascending:false,nullsFirst:false}),
+  ]):[{data:[]},{data:[]}];
+  const interests=interestResult.data?.map(item=>item.area_id)||[];
+  const entries=entryResult.data||[];
   const missing=curriculumMissing(profile,entries);
   const tab=(await searchParams).etapa||'dados';
   const tabs=[['dados','Dados e habilidades'],['trajetoria','Experiência e formação'],['revisao','Revisar e exportar']];
@@ -34,13 +39,12 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
           <Field name="city" label="Cidade" value={profile?.city} required maxLength={100} />
           <Field name="state" label="UF" value={profile?.state} maxLength={2} />
           <Field name="headline" label="Cargo ou área de atuação" value={profile?.headline} required maxLength={160} placeholder="Ex.: Analista de Qualidade" />
-          <Field name="professional_url" label="LinkedIn ou portfólio (HTTPS, opcional)" value={profile?.professional_url} type="url" />
+          <CurriculumFields candidate={profile} />
           <div className="full"><TextArea name="summary" label="Resumo profissional (mínimo de 30 caracteres para candidatura)" value={profile?.summary||''} required rows={5} /></div>
-          <div className="full"><Field name="skills" label="Habilidades (separe por vírgulas)" value={profile?.skills.join(', ')} required placeholder="Qualidade, Excel, atendimento..." /></div>
           <Select name="availability" label="Disponibilidade" value={profile?.availability}><option value="">Selecione</option><option>Imediata</option><option>Em até 30 dias</option><option>Em até 60 dias</option></Select>
           <Select name="work_model" label="Modelo preferido" value={profile?.work_model}><option value="">Selecione</option><option>Presencial</option><option>Híbrido</option><option>Remoto</option></Select>
         </div>
-        <fieldset><legend>Áreas de interesse (até 3)</legend><div className="checkbox-grid">{areas?.map(a=><label className="check" key={a.id}><input type="checkbox" name="interests" value={a.id} defaultChecked={interests.includes(a.id)} />{a.name}</label>)}</div></fieldset>
+        <InterestFields areas={areas||[]} interests={interests} error={!!areasError} />
       </ActionForm>
     </div>}
 
@@ -48,26 +52,19 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
       <div className="card"><h2>Sua trajetória</h2><p className="muted">Adicione experiências, formação acadêmica, cursos, certificações e idiomas. Para candidatar-se, basta uma experiência ou formação com nome e instituição.</p>
         {entries.length?entries.map(entry=><div className="message" key={entry.id}>
           <strong>{entryKinds[entry.kind]||entry.kind}: {entry.title}</strong>
-          <p>{entry.organization}{entry.start_date?` · ${date(entry.start_date)}`:''}{entry.end_date?` – ${date(entry.end_date)}`:entry.start_date?' – atual':''}</p>
+          <p>{entry.organization}{entry.start_date?` · ${date(entry.start_date)}`:''}{entry.end_date?` – ${date(entry.end_date)}`:''}</p>
+          {entryDetails(entry)&&<p className="muted">{entryDetails(entry)}</p>}
           {entry.description&&<p>{entry.description}</p>}
           <details><summary>Editar informação</summary><ActionForm action={mutate} submit="Salvar alteração">
             <Hidden name="op" value="edit-entry" /><Hidden name="candidate_id" value={profile!.id} /><Hidden name="entry_id" value={entry.id} />
-            <Select name="kind" label="Tipo" value={entry.kind}>{Object.entries(entryKinds).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select>
-            <Field name="title" label="Cargo, curso ou título" value={entry.title} required maxLength={160} />
-            <Field name="organization" label="Empresa ou instituição" value={entry.organization} required maxLength={160} />
-            <div className="form-grid"><Field name="start_date" label="Início" type="date" value={entry.start_date||''} /><Field name="end_date" label="Fim (vazio se atual)" type="date" value={entry.end_date||''} /></div>
-            <TextArea name="description" label="Atividades, resultados ou detalhes" value={entry.description} />
+            <EntryFields entry={entry} />
           </ActionForm></details>
           <ActionForm action={mutate} submit="Remover" confirm="Remover esta informação do currículo?"><Hidden name="op" value="delete-entry" /><Hidden name="candidate_id" value={profile!.id} /><Hidden name="entry_id" value={entry.id} /></ActionForm>
         </div>):<Empty title="Sua trajetória começa aqui" description="Adicione uma experiência profissional ou formação para completar o currículo." icon="history_edu" />}
       </div>
       <div className="card"><h2>Adicionar informação</h2>{profile?<ActionForm action={mutate} submit="Adicionar ao currículo">
         <Hidden name="op" value="entry" /><Hidden name="candidate_id" value={profile.id} />
-        <Select name="kind" label="Tipo" required>{Object.entries(entryKinds).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select>
-        <Field name="title" label="Cargo, curso ou título" required maxLength={160} />
-        <Field name="organization" label="Empresa ou instituição" required maxLength={160} />
-        <div className="form-grid"><Field name="start_date" label="Início" type="date" /><Field name="end_date" label="Fim (vazio se atual)" type="date" /></div>
-        <TextArea name="description" label="Atividades, resultados ou detalhes" />
+        <EntryFields />
       </ActionForm>:<p>Salve seus dados pessoais antes de adicionar sua trajetória.</p>}</div>
     </div>}
 
@@ -75,8 +72,9 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
       <div className="card"><h2>Revisão do currículo</h2>
         {profile?<><p><strong>{profile.full_name}</strong><br />{profile.headline||'Área de atuação pendente'} · {profile.city||'Cidade pendente'}{profile.state?` / ${profile.state}`:''}</p>
           <p>{profile.email} · {profile.phone||'Telefone pendente'}</p><p className="detail-body">{profile.summary||'Resumo profissional pendente.'}</p>
+          <CurriculumExtraSummary candidate={profile} />
           <p><strong>Habilidades:</strong> {profile.skills.join(', ')||'Pendente'}</p>
-          <h3>Trajetória</h3>{entries.length?entries.map(entry=><p key={entry.id}><strong>{entry.title}</strong> · {entry.organization}<br /><small>{entryKinds[entry.kind]||entry.kind}</small></p>):<p className="muted">Nenhuma informação adicionada.</p>}
+          <h3>Trajetória</h3>{entries.length?entries.map(entry=><p key={entry.id}><strong>{entry.title}</strong> · {entry.organization}<br /><small>{entryKinds[entry.kind]||entry.kind}{entryDetails(entry)?` · ${entryDetails(entry)}`:''}</small></p>):<p className="muted">Nenhuma informação adicionada.</p>}
           <a className="button outlined" href={`/api/curriculos/${profile.id}/pdf`}>Exportar currículo em PDF</a>
         </>:<p>Salve seus dados para visualizar o currículo.</p>}
       </div>

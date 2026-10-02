@@ -1,5 +1,7 @@
 # Estado de entrega
 
+Atualização de 02/10/2026: cadastros de currículo do RH e candidato com campos complementares opcionais, habilidades em cards removíveis, trajetória com situação/nível/carga horária e mensagens para áreas de interesse vazias ou indisponíveis. Vagas têm listas de responsabilidades/requisitos/benefícios e catálogos de nível de experiência e tipo de emprego. Configurações inclui edição, desativação e exclusão protegida de cadastros em uso. Migration `202610020002_curriculum_and_job_catalogs.sql`; detalhes e verificação em `CURRICULUM_AND_JOB_FIELDS.md`. Publicação requer aplicar a migration no banco hospedado; nenhum currículo real foi importado.
+
 Diagnóstico de Auth: mensagens distinguem falha de credenciais, configuração, provedor, CAPTCHA, limite e indisponibilidade. Logs usam somente eventos/códigos fixos, sem dados pessoais. Lint, TypeScript, oito testes Vitest e build validados. Na publicação, health e login direto no Supabase passaram, mas a tentativa pelo formulário da Vercel falhou; a causa ainda depende do diagnóstico do ambiente publicado.
 
 | Área | Implementado | Validado aqui | Para produção |

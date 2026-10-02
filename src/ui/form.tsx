@@ -8,8 +8,12 @@ export function ActionForm({ action, children, submit = 'Salvar alterações', c
 }) {
   const [state, formAction, pending] = useActionState(action, initialResult);
   const router = useRouter();
-  useEffect(() => { if (state.ok) { if (state.redirect) router.push(state.redirect); router.refresh(); } }, [state, router]);
-  return <form action={formAction} className={`form ${className}`} onSubmit={e => { if (confirm && !window.confirm(confirm)) e.preventDefault(); }}>
+  useEffect(() => { if (state.ok && state.redirect) router.push(state.redirect); }, [state, router]);
+  return <form action={formAction} className={`form ${className}`} onSubmit={e => {
+    const draft=Array.from(e.currentTarget.querySelectorAll<HTMLInputElement>('input[data-list-draft]')).find(input=>input.value.trim());
+    if(draft){e.preventDefault();draft.setCustomValidity('Clique em Adicionar ou pressione Enter para incluir este item antes de salvar.');draft.reportValidity();return;}
+    if (confirm && !window.confirm(confirm)) e.preventDefault();
+  }}>
     {children}
     {state.message && <div role={state.ok ? 'status' : 'alert'} className={`alert ${state.ok ? 'success' : 'danger'}`}>{state.message}</div>}
     <button className="button primary" disabled={pending} type="submit">{pending ? 'Salvando…' : submit}</button>

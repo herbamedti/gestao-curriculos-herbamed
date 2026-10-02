@@ -8,12 +8,12 @@ export const session = cache(async () => {
   if (!user) redirect('/entrar');
   return { client, user };
 });
-export async function requireStaff() {
+export const requireStaff = cache(async () => {
   const current = await session();
   const { data } = await current.client.rpc('is_staff');
   if (!data) redirect('/acesso-negado');
   return current;
-}
+});
 export async function requirePermission(permission: string, jobId?: string) {
   const current = await requireStaff();
   const { data } = await current.client.rpc('has_permission', { p_permission: permission, ...(jobId ? { p_job_id: jobId } : {}) });
