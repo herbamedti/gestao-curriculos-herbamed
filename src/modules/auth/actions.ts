@@ -6,6 +6,8 @@ import { createHmac } from 'node:crypto';
 import { db } from '@/lib/supabase';
 import { config, features, isConfigured } from '@/lib/config';
 import { serviceDb } from '@/lib/service-db';
+import { log } from '@/lib/logger';
+import { loginFailure } from './login-error';
 import type { ActionResult } from '@/lib/result';
 const credentials = z.object({ email: z.email().max(254), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
@@ -64,7 +66,11 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere sua senha.'};
     }
     const {data:login,error}=await client.auth.signInWithPassword({email,password});
-    if(error) return {ok:false,message:features.email?'Não foi possível entrar. Confira suas credenciais e a confirmação de e-mail.':'Não foi possível entrar. Confira seu e-mail e senha.'};
+    if(error) {
+      const failure = loginFailure(error, features.email);
+      log('auth.login_failed', { code: failure.code });
+      return {ok:false,message:failure.message};
+    }
     const {data:staff}=await client.rpc('is_staff');
     if (staff) {
       const [{data:account},{data:roles},{data:assurance}] = await Promise.all([
@@ -77,7 +83,11 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       if (requiresMfa && assurance?.currentLevel !== 'aal2') return {ok:true,message:'Confirme o acesso com seu aplicativo autenticador.',redirect:'/seguranca'};
     }
     return {ok:true,message:'Acesso confirmado.',redirect:staff?'/rh':'/candidato'};
-  } catch { return {ok:false,message:'Verifique os campos. A senha deve ter entre 12 e 128 caracteres.'}; }
+  } catch (error) {
+    if (error instanceof z.ZodError) return {ok:false,message:'Verifique os campos. A senha deve ter entre 12 e 128 caracteres.'};
+    log('auth.request_failed', { code: 'unexpected_error' });
+    return {ok:false,message:'Não foi possível conectar ao serviço de autenticação. Tente novamente ou procure o administrador.'};
+  }
 }
 export async function microsoft() {
   if(!isConfigured()) redirect('/entrar?erro=configuracao');

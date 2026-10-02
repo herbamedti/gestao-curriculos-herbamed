@@ -1,5 +1,7 @@
 # Estado de entrega
 
+Diagnóstico de Auth: mensagens distinguem falha de credenciais, configuração, provedor, CAPTCHA, limite e indisponibilidade. Logs usam somente eventos/códigos fixos, sem dados pessoais. Lint, TypeScript, oito testes Vitest e build validados. Na publicação, health e login direto no Supabase passaram, mas a tentativa pelo formulário da Vercel falhou; a causa ainda depende do diagnóstico do ambiente publicado.
+
 | Área | Implementado | Validado aqui | Para produção |
 | --- | --- | --- | --- |
 | Portal e vagas | Home, busca, detalhe, SEO, candidatura; demo hospedada sem indexação | Build e navegação local | Revisão de conteúdo institucional |

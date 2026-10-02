@@ -137,6 +137,24 @@ Após o deploy, abra `https://SEU-PROJETO.vercel.app/api/health`: deve responder
 
 Para publicar mudanças futuras: teste localmente, crie migrations novas quando houver schema, revise `npx supabase db push --dry-run`, aplique `npx supabase db push` ao projeto correto e só então envie o commit que dispara o deploy da Vercel. Mantenha `APP_URL`, redirects, Turnstile e domínio de e-mail sincronizados. No plano Free, o [Supabase pode pausar](https://supabase.com/docs/guides/platform/free-project-pausing) projetos de baixa atividade; abra o Dashboard e use **Resume project** quando necessário. Não conte com isso como disponibilidade contínua para candidatos reais.
 
+## Diagnosticar uma falha de login na Vercel
+
+As rotas `/entrar` e `/entrar?perfil=rh` usam a mesma autenticação por senha. O perfil de gestor é reconhecido pelas permissões no banco, após o login. O usuário hospedado é independente dos usuários do Docker local.
+
+Em *Vercel → Logs*, procure `auth.login_failed` após reproduzir a tentativa. O campo `code` não contém e-mail, senha, chave ou a mensagem original do serviço:
+
+| Código | Verificação |
+| --- | --- |
+| `credentials_rejected` | Confira a senha e se a conta existe e está confirmada no **mesmo projeto** usado pelo deploy. Também pode significar que o deploy aponta a outro banco. |
+| `backend_access_rejected` | Confira `SUPABASE_URL` e `SUPABASE_ANON_KEY` do projeto hospedado. Use a chave publishable completa, sem aspas nem espaços extras. Não importe o `.env` local. |
+| `password_provider_disabled` | Habilite o provedor Email/senha no Supabase. `ENABLE_EMAIL=false` desativa envio de mensagens na aplicação e não o provedor de login. |
+| `captcha_rejected` | Confira o CAPTCHA configurado em Supabase Auth: é independente da flag Turnstile da aplicação. |
+| `rate_limited` | Aguarde antes de tentar novamente. |
+| `backend_unavailable` | Confira se o projeto Supabase está ativo e a disponibilidade do serviço. |
+| `login_failed` / `unexpected_error` | Consulte os logs operacionais; não redefina a senha sem identificar a causa. |
+
+Depois de corrigir as variáveis, faça **Redeploy** e abra o domínio estável do projeto ou a URL do **novo** deployment. A URL gerada para um deployment anterior continua usando as variáveis daquela publicação. Se a URL pedir uma sessão da Vercel antes de abrir o site, o acesso está protegido pela plataforma; isso é separado do formulário de login Herbamed.
+
 ## Ambiente local preservado e limite da demonstração
 
 Use `npm run local:start` para manter o site em `http://localhost:3000` com banco e Mailpit locais. Depois da primeira configuração, `docker compose up -d --build` recompila só a aplicação local. `npm run db:stop` para o Supabase local sem apagar seus dados; `db:reset` **apaga** apenas o banco local. Não rode `vercel env pull` nem coloque credenciais hospedadas em `.env` ou `.env.local` deste checkout. `npx supabase link` grava o vínculo remoto sob `supabase/.temp/` (ignorado); antes de `db push`, confirme o Project ref indicado pelo CLI.
