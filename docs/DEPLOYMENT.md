@@ -2,6 +2,8 @@
 
 Este roteiro mantém **dois bancos independentes**. `npm run local:start` usa o Supabase CLI/Docker e os dados fictícios do computador. A Vercel usa um projeto Supabase hospedado novo, identificado por `https://<project-ref>.supabase.co`. Nenhuma etapa abaixo copia o banco, as senhas ou o `.env` local para a nuvem.
 
+**Primeira versão sem serviços de e-mail e Turnstile.** Use `APP_ENV=demo`, `ENABLE_EMAIL=false` e `ENABLE_TURNSTILE=false`. No modo `demo`, as duas flags também assumem `false` quando ausentes. Não é necessário cadastrar `SMTP_*` ou `TURNSTILE_*` na Vercel enquanto os serviços estiverem desativados. O cadastro cria uma conta confirmada no servidor sem enviar mensagens, com honeypot e quota de cinco tentativas por origem/hora e cem tentativas globais/hora. Recuperação de senha por e-mail, códigos de e-mail e alteração do endereço de login ficam indisponíveis. A troca da senha exige o aplicativo autenticador. O `.env` e o `.env.local` continuam exclusivos do Docker local; **não os envie nem os importe na Vercel**.
+
 **Plano e finalidade.** O [Hobby da Vercel](https://vercel.com/docs/plans/hobby) permite apenas uso pessoal e não comercial. Como esta é uma aplicação da Herbamed, use Pro ou, se a conta for elegível, o [trial Pro](https://vercel.com/docs/plans/pro-plan/trials) para a demonstração inicial. O trial não oferece hospedagem gratuita permanente. Supabase Free e [Turnstile Free](https://developers.cloudflare.com/turnstile/plans/) podem servir à demonstração, respeitados seus limites. Até a revisão de segurança e privacidade descrita ao final, use somente **contas e currículos fictícios** na nuvem e `APP_ENV=demo`.
 
 ## 1. Preparar e versionar o código
@@ -58,9 +60,11 @@ https://SEU-PROJETO.vercel.app/auth/callback?next=/nova-senha
 
 Esses três caminhos correspondem ao cadastro, Microsoft e recuperação de senha do código. Confira o [guia de redirects](https://supabase.com/docs/guides/auth/redirect-urls). O `supabase/config.toml` define o **ambiente local**; `db push` não substitui a configuração de Auth hospedada.
 
-5. Em *Authentication → Providers → Email*, habilite Email, confirmação de cadastro, confirmação nos endereços antigo **e** novo ao alterar e-mail e proteção de alteração de senha. Habilite TOTP em MFA se aparecer como opção; a [API TOTP é gratuita](https://supabase.com/docs/guides/auth/auth-mfa/totp). Não desligue essas proteções para facilitar o teste.
+5. Em *Authentication → Providers → Email*, habilite o provedor Email/senha. Mantenha confirmação de cadastro, confirmação nos endereços antigo **e** novo ao alterar e-mail e proteção de alteração de senha: no modo sem envio, a aplicação cria a conta confirmada por API administrativa no servidor, sem depender do fluxo de mensagens. Habilite TOTP em MFA se aparecer como opção; a [API TOTP é gratuita](https://supabase.com/docs/guides/auth/auth-mfa/totp). O gestor configura o autenticador após o primeiro login por senha.
 
 ## 3. Configurar envio de e-mail
+
+**Opcional nesta versão.** Com `ENABLE_EMAIL=false`, pule esta seção. Para reativar, configure o serviço abaixo, cadastre as variáveis e mude para `ENABLE_EMAIL=true` antes de um novo deploy. Fora de `demo`, o padrão da flag é `true`.
 
 O SMTP inicial do Supabase só envia para integrantes do projeto e tem limite baixo; cadastros de candidatos exigem [SMTP personalizado](https://supabase.com/docs/guides/auth/auth-smtp). Escolha um provedor SMTP, verifique o domínio/remetente e obtenha host, porta, usuário e senha. Configure as **mesmas credenciais** em dois lugares:
 
@@ -71,13 +75,17 @@ Em geral, porta 587 usa `SMTP_SECURE=false` (STARTTLS) e porta 465 usa `true`; c
 
 ## 4. Criar o Turnstile
 
-No [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/), crie um widget para o **hostname exato** da Vercel ou do domínio próprio. Copie a *site key* e a *secret key*. O formulário mostra a site key e o servidor valida a resposta com a secret key e o hostname de `APP_URL`. Cadastros, login e recuperação em cloud não passam sem essa configuração. Ao mudar o domínio, atualize o widget, `APP_URL`, os redirects do Supabase e faça novo deploy.
+**Opcional nesta versão.** Com `ENABLE_TURNSTILE=false`, pule esta seção. Para reativar, configure o widget abaixo, cadastre as chaves e mude para `ENABLE_TURNSTILE=true` antes de um novo deploy. No modo local o padrão é `false`; fora de `local` e `demo`, o padrão é `true`.
+
+No [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/), crie um widget para o **hostname exato** da Vercel ou do domínio próprio. Copie a *site key* e a *secret key*. Quando a flag está ativa, o formulário mostra a site key e o servidor valida a resposta com a secret key e o hostname de `APP_URL`. Ao mudar o domínio, atualize o widget, `APP_URL`, os redirects do Supabase e faça novo deploy.
 
 ## 5. Importar na Vercel e cadastrar variáveis
 
 Em *Vercel → Add New → Project*, importe o repositório privado. Selecione **Next.js** e raiz `./`. Em *Build and Output Settings*, sobrescreva apenas **Build Command** com `npm run build` e **Install Command** com `npm ci`; mantenha **Output Directory** no padrão do Next.js. O build explícito executa também a validação de ambiente definida no `package.json`. Escolha um nome de projeto e use o domínio estável `https://SEU-PROJETO.vercel.app` como `APP_URL`. Se a URL final for diferente, corrija `APP_URL` e os redirects antes de testar Auth. Selecione **Node.js 24.x** nas configurações do projeto. Se a tela de importação ainda mostrar *Possible configuration mismatch* depois de o commit que arquiva `Dockerfile.vercel` chegar ao GitHub, atualize a página de importação.
 
 Cadastre estas variáveis no escopo **Production**. O [modelo sem valores reais](../.env.vercel.example) está no repositório. No painel da Vercel, insira apenas o **valor** de cada uma, sem copiar comentários nem `=`. Não copie `.env` ou `.env.local` do computador.
+
+Se houver um `.env.vercel.local` privado preparado no computador, ele pode ser importado pelo botão **Import .env** nessa tela. Confira `APP_URL` com o domínio atribuído ao projeto antes da importação. Esse arquivo deve conter somente variáveis hospedadas, permanecer ignorado pelo Git e nunca ser usado como `.env`/`.env.local` do Docker. Alterar as chaves em `.env` para hospedadas mantendo uma URL local produz uma mistura inválida e quebra o acesso local.
 
 | Variável | Valor / origem | Exposição |
 | --- | --- | --- |
@@ -87,18 +95,28 @@ Cadastre estas variáveis no escopo **Production**. O [modelo sem valores reais]
 | `SUPABASE_URL` | Project URL do Supabase hospedado | Servidor |
 | `SUPABASE_ANON_KEY` | Chave **publishable** desse projeto | Servidor; pode ser pública, mas não precisa de `NEXT_PUBLIC_` no fluxo atual |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave **secret** do mesmo projeto | **Segredo apenas servidor**; nunca use `NEXT_PUBLIC_` |
-| `TURNSTILE_SITE_KEY` | Site key do widget para o hostname de `APP_URL` | Chave pública renderizada no formulário |
-| `TURNSTILE_SECRET_KEY` | Secret key do mesmo widget | Segredo apenas servidor |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Endereço, porta e TLS conforme o provedor | Servidor |
-| `SMTP_USER` / `SMTP_PASSWORD` | Credenciais SMTP | Segredos apenas servidor |
-| `SMTP_FROM` | Remetente verificado, no formato `Nome <endereco@dominio>` | Servidor |
+| `ENABLE_TURNSTILE` | `false` nesta versão | Servidor |
+| `ENABLE_EMAIL` | `false` nesta versão | Servidor |
+| `TURNSTILE_SITE_KEY` | Somente quando Turnstile ativo: site key do widget | Chave pública renderizada no formulário |
+| `TURNSTILE_SECRET_KEY` | Somente quando Turnstile ativo: secret key | Segredo apenas servidor |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Somente quando e-mail ativo: endereço, porta e TLS | Servidor |
+| `SMTP_USER` / `SMTP_PASSWORD` | Somente quando e-mail ativo: credenciais SMTP | Segredos apenas servidor |
+| `SMTP_FROM` | Somente quando e-mail ativo: remetente verificado | Servidor |
 | `ENABLE_LEGACY_STORAGE_UPLOADS` | `false` | Servidor |
 
-O build recusa variáveis obrigatórias ausentes, URLs locais e upload legado ativado. **Não configure** `DATABASE_URL`, `AZURE_CLIENT_ID`, `AZURE_SECRET`, `CLAMAV_HOST`, `SIGNED_URL_TTL_SECONDS` ou `NEXT_PUBLIC_SUPABASE_*` na Vercel para o fluxo atual. `DATABASE_URL` é usado apenas pelo worker histórico local. O cliente de autenticação da aplicação roda no servidor e recebe a chave publishable por `SUPABASE_ANON_KEY`. As chaves Microsoft pertencem à configuração do provedor Azure no Supabase, não ao Next.js.
+O build recusa variáveis obrigatórias ausentes, URLs locais, flags inválidas e upload legado ativado. SMTP e Turnstile só são obrigatórios com suas respectivas flags ativas. **Não configure** `DATABASE_URL`, `AZURE_CLIENT_ID`, `AZURE_SECRET`, `CLAMAV_HOST`, `SIGNED_URL_TTL_SECONDS` ou `NEXT_PUBLIC_SUPABASE_*` na Vercel para o fluxo atual. `DATABASE_URL` é usado apenas pelo worker histórico local. O cliente de autenticação da aplicação roda no servidor e recebe a chave publishable por `SUPABASE_ANON_KEY`. As chaves Microsoft pertencem à configuração do provedor Azure no Supabase, não ao Next.js.
 
 Evite associar o **mesmo projeto Supabase de Production** às Preview Deployments: elas usam outra URL e poderiam misturar dados. Deixe Preview sem estas variáveis, com build bloqueado, até haver um projeto Supabase de staging, Turnstile e URLs próprios. Depois de salvar variáveis, acione **Deploy/Redeploy**; mudanças de ambiente não alteram deployments já criados.
 
 ## 6. Acesso do gestor e conteúdo inicial
+
+### Primeiro administrador por senha, sem convite por e-mail
+
+Depois de aplicar as migrations, em um projeto com Auth e equipe vazios, crie `.env.admin-bootstrap.local` **ignorado pelo Git**, com `ADMIN_EMAIL` e `ADMIN_NAME`. Não use `.env` ou `.env.local` para isso. Execute `node scripts/bootstrap-admin.mjs`: o script usa exclusivamente o projeto hospedado vinculado pelo Supabase CLI, gera senha aleatória forte, salva-a nesse arquivo privado, cria a conta já confirmada sem envio de e-mail e concede o perfil **Superadministrador**, com escopo geral e MFA ativo. Não imprime chaves, senha ou e-mail nos logs e não altera credenciais existentes. O e-mail real do administrador nunca entra em migration ou seed.
+
+Entre em `/entrar` com as credenciais salvas. No primeiro acesso, configure seu autenticador em `/seguranca`, escaneie o QR code e confirme os seis dígitos. Depois disso, o sistema abre `/rh` e todas as funções do perfil geral. A autorização de senha é por conta (`staff.password_login_enabled`); outros usuários não recebem acesso administrativo por terem o mesmo domínio ou por se cadastrarem. A rota de Conta permite trocar a senha com TOTP.
+
+### Alternativa com Microsoft, quando o provedor estiver configurado
 
 O projeto hospedado começa **sem usuários, vagas, candidatos ou aviso de privacidade**. Para liberar o primeiro gestor, configure o provedor [Azure/Microsoft no Supabase](https://supabase.com/docs/guides/auth/social-login/auth-azure): registre uma aplicação Web no Microsoft Entra ID da organização, com redirect URI `https://SEU_PROJECT_REF.supabase.co/auth/v1/callback`; copie Client ID e **valor** do Client Secret para *Supabase → Authentication → Providers → Azure*. Informe a **Tenant URL** `https://login.microsoftonline.com/SEU_TENANT_ID` para limitar o diretório. O código já solicita escopo `email`.
 
@@ -115,7 +133,7 @@ Use o e-mail real apenas no painel protegido, **nunca** no arquivo SQL do Git. A
 
 ## 7. Conferir a publicação
 
-Após o deploy, abra `https://SEU-PROJETO.vercel.app/api/health`: deve responder `{"status":"ok"}`. Se retornar 503, confirme migrations, URL e chave publishable do Supabase e veja *Vercel → Logs*. Teste cadastro fictício e confirmação por e-mail, login, currículo estruturado e PDF; depois candidatura com currículo completo e aviso ativo. Teste o RH com Microsoft/TOTP, candidatura vinculada, edição e PDF. Os dados locais **não** devem aparecer na nuvem e os dados hospedados **não** devem aparecer em `localhost:3000`.
+Após o deploy, abra `https://SEU-PROJETO.vercel.app/api/health`: deve responder `{"status":"ok"}`. Se retornar 503, confirme migrations, URL e chave publishable do Supabase e veja *Vercel → Logs*. Teste cadastro fictício sem e-mail nesta versão, login, currículo estruturado e PDF; depois candidatura com currículo completo e aviso ativo. Teste o RH com senha/TOTP (ou Microsoft configurado), candidatura vinculada, edição e PDF. Os dados locais **não** devem aparecer na nuvem e os dados hospedados **não** devem aparecer em `localhost:3000`.
 
 Para publicar mudanças futuras: teste localmente, crie migrations novas quando houver schema, revise `npx supabase db push --dry-run`, aplique `npx supabase db push` ao projeto correto e só então envie o commit que dispara o deploy da Vercel. Mantenha `APP_URL`, redirects, Turnstile e domínio de e-mail sincronizados. No plano Free, o [Supabase pode pausar](https://supabase.com/docs/guides/platform/free-project-pausing) projetos de baixa atividade; abra o Dashboard e use **Resume project** quando necessário. Não conte com isso como disponibilidade contínua para candidatos reais.
 

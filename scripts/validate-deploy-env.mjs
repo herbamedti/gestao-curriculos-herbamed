@@ -4,10 +4,16 @@ const hosted = process.env.VERCEL === '1' || ['demo', 'production'].includes(pro
 if (hosted) {
   const required = [
     'APP_ENV', 'APP_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY',
-    'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM',
+    'SUPABASE_SERVICE_ROLE_KEY',
   ];
+  const turnstile = process.env.ENABLE_TURNSTILE === 'true' || (process.env.ENABLE_TURNSTILE === undefined && process.env.APP_ENV !== 'demo');
+  const email = process.env.ENABLE_EMAIL === 'true' || (process.env.ENABLE_EMAIL === undefined && process.env.APP_ENV !== 'demo');
+  if (turnstile) required.push('TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY');
+  if (email) required.push('SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM');
   const errors = required.filter(key => !process.env[key]?.trim()).map(key => `${key} ausente`);
+  for (const key of ['ENABLE_TURNSTILE', 'ENABLE_EMAIL']) {
+    if (process.env[key] !== undefined && !['true', 'false'].includes(process.env[key])) errors.push(`${key} deve ser true ou false`);
+  }
   if (!['demo', 'production'].includes(process.env.APP_ENV)) errors.push('APP_ENV deve ser demo ou production');
   for (const key of ['APP_URL', 'SUPABASE_URL']) {
     try {
@@ -17,7 +23,7 @@ if (hosted) {
     } catch { errors.push(`${key} deve ser uma URL válida`); }
   }
   const port = Number(process.env.SMTP_PORT);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) errors.push('SMTP_PORT inválida');
+  if (email && (!Number.isInteger(port) || port < 1 || port > 65535)) errors.push('SMTP_PORT inválida');
   if (process.env.ENABLE_LEGACY_STORAGE_UPLOADS === 'true') errors.push('uploads legados devem permanecer desativados');
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== process.env.SUPABASE_URL)
     errors.push('NEXT_PUBLIC_SUPABASE_URL deve apontar ao mesmo projeto Supabase');

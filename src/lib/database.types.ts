@@ -1059,6 +1059,7 @@ export type Database = {
           created_at: string
           display_name: string
           mfa_enabled: boolean
+          password_login_enabled: boolean
           user_id: string
         }
         Insert: {
@@ -1066,6 +1067,7 @@ export type Database = {
           created_at?: string
           display_name: string
           mfa_enabled?: boolean
+          password_login_enabled?: boolean
           user_id: string
         }
         Update: {
@@ -1073,6 +1075,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           mfa_enabled?: boolean
+          password_login_enabled?: boolean
           user_id?: string
         }
         Relationships: []
@@ -1175,6 +1178,10 @@ export type Database = {
         Returns: undefined
       }
       authorize_download: { Args: { p_document_id: string }; Returns: string }
+      bootstrap_password_staff: {
+        Args: { p_display_name: string; p_user_id: string }
+        Returns: string
+      }
       can_application: {
         Args: { p_application_id: string; p_permission: string }
         Returns: boolean
@@ -1184,6 +1191,7 @@ export type Database = {
         Returns: boolean
       }
       consume_account_email_code: { Args: { p_code: string }; Returns: boolean }
+      consume_signup_quota: { Args: { p_key: string }; Returns: boolean }
       create_manual_candidate: { Args: { p_data: Json }; Returns: string }
       curriculum_missing: {
         Args: { p_candidate_id: string }

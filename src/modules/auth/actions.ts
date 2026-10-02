@@ -1,13 +1,16 @@
 'use server';
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { createHmac } from 'node:crypto';
 import { db } from '@/lib/supabase';
-import { config, isConfigured } from '@/lib/config';
+import { config, features, isConfigured } from '@/lib/config';
+import { serviceDb } from '@/lib/service-db';
 import type { ActionResult } from '@/lib/result';
 const credentials = z.object({ email: z.email().max(254), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
   if (form.get('website')) return false;
-  if (config.environment === 'local') return true;
+  if (!features.turnstile) return true;
   if (!process.env.TURNSTILE_SECRET_KEY) return false;
   const token = form.get('cf-turnstile-response');
   if (typeof token !== 'string') return false;
@@ -22,11 +25,13 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     const mode = z.enum(['login','signup','recover','password']).parse(form.get('mode'));
     const client = await db();
     if(mode==='recover') {
+      if (!features.email) return {ok:false,message:'A recuperação por e-mail está temporariamente desativada. Procure o administrador.'};
       const email=z.email().parse(form.get('email'));
       await client.auth.resetPasswordForEmail(email,{redirectTo:`${config.url}/auth/callback?next=/nova-senha`});
       return {ok:true,message:'Se houver uma conta para este e-mail, você receberá as instruções para continuar.'};
     }
     if(mode==='password') {
+      if (!features.email) return {ok:false,message:'A recuperação por e-mail está temporariamente desativada. Altere a senha em Configurações → Conta com o autenticador.'};
       const password=z.string().min(12).max(128).parse(form.get('password'));
       const {data:{user}}=await client.auth.getUser();
       if(!user) return {ok:false,message:'O link expirou. Solicite uma nova recuperação de senha.'};
@@ -37,13 +42,40 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     }
     const {email,password}=credentials.parse(Object.fromEntries(form));
     if(mode==='signup') {
+      if (!features.email) {
+        const service = serviceDb();
+        if (!service) return {ok:false,message:'O cadastro está indisponível neste ambiente.'};
+        const requestHeaders = await headers();
+        const ip = requestHeaders.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
+        const key = createHmac('sha256', process.env.SUPABASE_SERVICE_ROLE_KEY!).update(ip).digest('hex');
+        const quota = await service.rpc('consume_signup_quota', { p_key: key });
+        if (quota.error || !quota.data) return {ok:false,message:'O limite de cadastros foi atingido. Tente novamente mais tarde.'};
+        // This mode deliberately skips email delivery. Only the server can
+        // create a confirmed account; no staff role is granted by registration.
+        const created = await service.auth.admin.createUser({email,password,email_confirm:true});
+        if (created.error) return {ok:false,message:'Não foi possível concluir o cadastro. Se já possui uma conta, entre com sua senha.'};
+        const signedIn = await client.auth.signInWithPassword({email,password});
+        return signedIn.error
+          ? {ok:true,message:'Conta criada. Entre com seu e-mail e senha.',redirect:'/entrar'}
+          : {ok:true,message:'Conta criada.',redirect:'/candidato'};
+      }
       const {error}=await client.auth.signUp({email,password,options:{emailRedirectTo:`${config.url}/auth/callback`}});
       if(error) return {ok:false,message:'Não foi possível concluir o cadastro. Confira os dados ou tente recuperar sua senha.'};
       return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere sua senha.'};
     }
-    const {error}=await client.auth.signInWithPassword({email,password});
-    if(error) return {ok:false,message:'Não foi possível entrar. Confira suas credenciais e a confirmação de e-mail.'};
+    const {data:login,error}=await client.auth.signInWithPassword({email,password});
+    if(error) return {ok:false,message:features.email?'Não foi possível entrar. Confira suas credenciais e a confirmação de e-mail.':'Não foi possível entrar. Confira seu e-mail e senha.'};
     const {data:staff}=await client.rpc('is_staff');
+    if (staff) {
+      const [{data:account},{data:roles},{data:assurance}] = await Promise.all([
+        client.from('staff').select('mfa_enabled').eq('user_id',login.user!.id).single(),
+        client.from('staff_roles').select('roles(active,require_mfa)').eq('user_id',login.user!.id),
+        client.auth.mfa.getAuthenticatorAssuranceLevel(),
+      ]);
+      const assignedRoles = z.array(z.object({roles:z.object({active:z.boolean(),require_mfa:z.boolean()}).nullable()})).safeParse(roles);
+      const requiresMfa = !assignedRoles.success || !account || (account.mfa_enabled && assignedRoles.data.some(r=>r.roles?.active && r.roles.require_mfa));
+      if (requiresMfa && assurance?.currentLevel !== 'aal2') return {ok:true,message:'Confirme o acesso com seu aplicativo autenticador.',redirect:'/seguranca'};
+    }
     return {ok:true,message:'Acesso confirmado.',redirect:staff?'/rh':'/candidato'};
   } catch { return {ok:false,message:'Verifique os campos. A senha deve ter entre 12 e 128 caracteres.'}; }
 }

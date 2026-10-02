@@ -21,7 +21,7 @@ try {
   // A prior interrupted smoke run may have left this local-only seed opted out.
   if (await page.getByRole('button', { name: 'Ativar exigência' }).count()) {
     await page.getByRole('button', { name: 'Ativar exigência' }).click();
-    await page.getByText('Autenticação em duas etapas ativada').waitFor();
+    await page.getByRole('button', { name: 'Desativar exigência' }).waitFor();
     await page.reload();
   }
   const previous = await fetch('http://127.0.0.1:54324/api/v1/messages').then(r => r.json());
@@ -41,10 +41,10 @@ try {
   await disable.locator('select[name="method"]').selectOption('email');
   await disable.locator('input[name="code"]').fill(code);
   await disable.getByRole('button', { name: 'Desativar exigência' }).click();
-  await page.getByText('Exigência de duas etapas desativada').waitFor();
+  await page.getByRole('button', { name: 'Ativar exigência' }).waitFor();
   await page.reload();
   await page.getByRole('button', { name: 'Ativar exigência' }).click();
-  await page.getByText('Autenticação em duas etapas ativada').waitFor();
+  await page.getByRole('button', { name: 'Desativar exigência' }).waitFor();
 
   await page.goto('http://localhost:3000/entrar');
   await page.getByLabel('E-mail').fill('candidata.demo@example.test');

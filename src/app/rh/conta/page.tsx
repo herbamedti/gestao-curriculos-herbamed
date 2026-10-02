@@ -1,4 +1,5 @@
 import { requireStaff } from '@/modules/auth/session';
+import { features } from '@/lib/config';
 import { PageHeading } from '@/ui/common';
 import { AccountSettings } from '@/ui/account-settings';
 
@@ -10,6 +11,6 @@ export default async function StaffAccount() {
   ]);
   return <>
     <PageHeading eyebrow="CONFIGURAÇÕES" title="Conta" description="Atualize seus dados e a segurança do acesso de gestão." />
-    <AccountSettings name={staff?.display_name || user.user_metadata.full_name || ''} email={user.email || ''} staff mfaEnabled={staff?.mfa_enabled ?? true} factorId={factors?.totp[0]?.id} azure={user.app_metadata.provider === 'azure'} />
+    <AccountSettings name={staff?.display_name || user.user_metadata.full_name || ''} email={user.email || ''} staff mfaEnabled={staff?.mfa_enabled ?? true} factorId={factors?.totp[0]?.id} azure={user.app_metadata.provider === 'azure'} emailEnabled={features.email} />
   </>;
 }

@@ -1,26 +1,21 @@
 'use server';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { session } from './session';
 import type { ActionResult } from '@/lib/result';
-import type { Database } from '@/lib/database.types';
+import { serviceDb } from '@/lib/service-db';
+import { features } from '@/lib/config';
 
 const codeSchema = z.string().trim().toUpperCase().regex(/^[A-F0-9]{10}$/);
 const totpSchema = z.string().regex(/^\d{6}$/);
 const nameSchema = z.string().trim().min(2).max(160);
 const passwordSchema = z.string().min(12).max(128);
 const emailSchema = z.email().max(254);
-function serviceDb() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  return createClient<Database>(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
 
 export async function sendAccountEmailCode(): Promise<ActionResult> {
   const { user } = await session();
+  if (!features.email) return { ok: false, message: 'O envio de e-mail está temporariamente desativado. Use o aplicativo autenticador.' };
   const service = serviceDb();
   if (!user.email || !user.email_confirmed_at || !process.env.SMTP_HOST || !service)
     return { ok: false, message: 'A confirmação por e-mail não está disponível para esta conta.' };
@@ -57,6 +52,8 @@ export async function updateAccount(_: ActionResult, form: FormData): Promise<Ac
   const { client, user } = await session();
   try {
     const op = z.enum(['name', 'email', 'password', 'mfa']).parse(form.get('op'));
+    if (op === 'email' && !features.email)
+      return { ok: false, message: 'A alteração do e-mail está temporariamente desativada.' };
     if (op === 'name') {
       const name = nameSchema.parse(form.get('name'));
       const { error } = await client.rpc('update_account_name', { p_name: name });
@@ -73,6 +70,8 @@ export async function updateAccount(_: ActionResult, form: FormData): Promise<Ac
       return { ok: true, message: 'Autenticação em duas etapas ativada.' };
     }
     const method = z.enum(['email', 'authenticator']).parse(form.get('method'));
+    if (method === 'email' && !features.email)
+      return { ok: false, message: 'A confirmação por e-mail está temporariamente desativada. Use o autenticador.' };
     const rawCode = form.get('code');
     const code = method === 'email' ? codeSchema.parse(rawCode) : totpSchema.parse(rawCode);
     if (op === 'mfa') {

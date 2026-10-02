@@ -68,7 +68,7 @@ async function processDocument(doc:Document) {
   }
 }
 async function processOutbox() {
-  if(!pool||!process.env.SMTP_HOST)return;
+  if(!pool||!process.env.SMTP_HOST||process.env.ENABLE_EMAIL==='false'||(process.env.APP_ENV==='demo'&&process.env.ENABLE_EMAIL!=='true'))return;
   const transport=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT)||25,secure:process.env.SMTP_SECURE==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}:undefined});
   const {rows}=await pool.query<{id:string;email:string;subject:string;body:string}>(`with picked as (select id from private.outbox where status in ('pending','failed') and next_attempt_at<=now() and attempts<5 order by created_at limit 10 for update skip locked)
    update private.outbox o set status='sending',attempts=attempts+1 from picked p,auth.users u where o.id=p.id and u.id=o.recipient_id returning o.id,u.email,o.subject,o.body`);
