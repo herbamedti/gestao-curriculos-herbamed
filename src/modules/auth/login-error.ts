@@ -1,5 +1,28 @@
 type LoginError = { code?: string; status?: number; name?: string };
 
+const diagnosticCodes = new Set([
+  'invalid_credentials', 'email_not_confirmed', 'email_provider_disabled',
+  'captcha_failed', 'over_request_rate_limit', 'over_email_send_rate_limit',
+  'request_timeout', 'unexpected_failure', 'validation_failed', 'bad_json',
+  'bad_jwt', 'not_admin', 'no_authorization', 'user_not_found', 'user_banned',
+  'session_not_found', 'session_expired', 'unexpected_audience',
+  'provider_disabled', 'provider_email_needs_verification',
+  'email_address_invalid', 'email_address_not_authorized',
+]);
+const diagnosticKinds = new Set([
+  'AuthApiError', 'AuthUnknownError', 'AuthRetryableFetchError',
+  'AuthInvalidTokenResponseError', 'AuthInvalidCredentialsError',
+  'AuthSessionMissingError', 'AuthInvalidJwtError',
+]);
+
+export function loginDiagnostic(error: LoginError, category: string) {
+  const code = error.code && diagnosticCodes.has(error.code) ? error.code : 'unknown_code';
+  const kind = error.name && diagnosticKinds.has(error.name) ? error.name : 'unknown_kind';
+  const status = Number.isInteger(error.status) && error.status! >= 0 && error.status! <= 599
+    ? error.status : 'unknown_status';
+  return `${category}:${kind}:${code}:${status}`;
+}
+
 // Use fixed diagnostic codes: upstream messages can contain personal data.
 export function loginFailure(error: LoginError, emailEnabled: boolean) {
   const credentialsMessage = emailEnabled

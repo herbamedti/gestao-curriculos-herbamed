@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loginFailure } from './login-error';
+import { loginDiagnostic, loginFailure } from './login-error';
 
 describe('diagnóstico do login', () => {
   it('mantém a mesma resposta para credenciais inválidas e e-mail não confirmado', () => {
@@ -24,5 +24,9 @@ describe('diagnóstico do login', () => {
     const result = loginFailure({ code: 'detalhe-privado', name: 'detalhe-privado', status: 400 }, false);
     expect(JSON.stringify(result)).not.toContain('detalhe-privado');
     expect(result.code).toBe('login_failed');
+    expect(loginDiagnostic({ code: 'detalhe-privado', name: 'detalhe-privado', status: Infinity }, result.code))
+      .toBe('login_failed:unknown_kind:unknown_code:unknown_status');
+    expect(loginDiagnostic({ code: 'bad_jwt', name: 'AuthApiError', status: 400 }, result.code))
+      .toBe('login_failed:AuthApiError:bad_jwt:400');
   });
 });

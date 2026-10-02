@@ -141,7 +141,7 @@ Para publicar mudanças futuras: teste localmente, crie migrations novas quando 
 
 As rotas `/entrar` e `/entrar?perfil=rh` usam a mesma autenticação por senha. O perfil de gestor é reconhecido pelas permissões no banco, após o login. O usuário hospedado é independente dos usuários do Docker local.
 
-Em *Vercel → Logs*, procure `auth.login_failed` após reproduzir a tentativa. O campo `code` não contém e-mail, senha, chave ou a mensagem original do serviço:
+Em *Vercel → Logs*, procure `auth.login_failed` após reproduzir a tentativa. O campo `code` reúne categoria, tipo de erro conhecido, código Auth conhecido e status HTTP, separados por `:`; não contém e-mail, senha, chave ou a mensagem original do serviço. A categoria inicial orienta estas verificações:
 
 | Código | Verificação |
 | --- | --- |

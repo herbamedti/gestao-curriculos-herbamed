@@ -7,7 +7,7 @@ import { db } from '@/lib/supabase';
 import { config, features, isConfigured } from '@/lib/config';
 import { serviceDb } from '@/lib/service-db';
 import { log } from '@/lib/logger';
-import { loginFailure } from './login-error';
+import { loginDiagnostic, loginFailure } from './login-error';
 import type { ActionResult } from '@/lib/result';
 const credentials = z.object({ email: z.email().max(254), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
@@ -68,7 +68,7 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     const {data:login,error}=await client.auth.signInWithPassword({email,password});
     if(error) {
       const failure = loginFailure(error, features.email);
-      log('auth.login_failed', { code: failure.code });
+      log('auth.login_failed', { code: loginDiagnostic(error, failure.code) });
       return {ok:false,message:failure.message};
     }
     const {data:staff}=await client.rpc('is_staff');
