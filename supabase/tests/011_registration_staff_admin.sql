@@ -1,0 +1,92 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set search_path to public,extensions;
+select no_plan();
+
+select ok(private.valid_cpf('52998224725'),'CPF com dígitos corretos');
+select ok(not private.valid_cpf('52998224724'),'Último dígito incorreto');
+select ok(not private.valid_cpf('52998224735'),'Primeiro dígito incorreto');
+select ok(not private.valid_cpf('11111111111'),'CPF repetido inválido');
+select ok(not private.valid_cpf(null),'CPF ausente inválido');
+select ok(not has_function_privilege('anon','public.prepare_candidate_signup(text,text,text,text,date,text)','EXECUTE'),'Visitante não emite ticket');
+select ok(not has_function_privilege('authenticated','public.provision_staff(uuid,uuid,text,uuid,boolean,boolean)','EXECUTE'),'Usuário não provisiona equipe');
+select ok(not has_function_privilege('service_role','public.guard_candidate_signup(jsonb)','EXECUTE'),'Hook exclusivo do Auth');
+select ok(has_function_privilege('supabase_auth_admin','public.guard_candidate_signup(jsonb)','EXECUTE'),'Auth pode executar hook');
+select ok(not has_table_privilege('authenticated','private.candidate_registration','SELECT'),'CPF e nascimento privados');
+select ok(not has_table_privilege('service_role','private.candidate_registration','INSERT'),'Servidor usa RPC, sem escrita direta');
+select ok((select relrowsecurity from pg_class where oid='private.candidate_registration'::regclass),'Registro com RLS ativo');
+
+set local role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+select throws_ok($$select public.prepare_candidate_signup(repeat('f',64),repeat('f',64),'invalid@example.test','00000000000','1995-01-01',repeat('f',64))$$,'P0001','invalid_registration','CPF inválido não cria ticket');
+select throws_ok($$select public.prepare_candidate_signup(repeat('f',64),repeat('f',64),'invalid@example.test','52998224725',current_date+1,repeat('f',64))$$,'P0001','invalid_registration','Nascimento futuro negado');
+select throws_ok($$select public.prepare_candidate_signup(repeat('f',64),repeat('f',64),'invalid','52998224725','1995-01-01',repeat('f',64))$$,'P0001','invalid_registration','Formato de e-mail validado no banco');
+select ok(public.prepare_candidate_signup(repeat('d',64),repeat('d',64),'registered@example.test','52998224725','1995-01-01',encode(digest(repeat('d',64),'sha256'),'hex')),'Servidor emite ticket válido');
+select ok(public.prepare_candidate_signup(repeat('d',64),repeat('d',64),'registered@example.test','52998224725','1995-01-01',repeat('a',64)),'Segunda tentativa permitida');
+select ok(public.prepare_candidate_signup(repeat('d',64),repeat('d',64),'registered@example.test','52998224725','1995-01-01',repeat('b',64)),'Terceira tentativa permitida');
+select ok(not public.prepare_candidate_signup(repeat('d',64),repeat('d',64),'registered@example.test','52998224725','1995-01-01',repeat('c',64)),'Quarta tentativa por minuto negada');
+reset role;
+-- postgres owns the hook; EXECUTE grants for the Auth role are checked above.
+select is(public.guard_candidate_signup('{"user":{"email":"registered@example.test","app_metadata":{"provider":"email"},"user_metadata":{"registration_ticket":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}'), '{}'::jsonb,'Hook permite somente ticket validado');
+select ok(public.guard_candidate_signup('{"user":{"email":"bypass@example.test","app_metadata":{"provider":"email"}}}') ? 'error','Chamada direta sem ticket negada');
+select ok(public.guard_candidate_signup('{"user":{"email":"different@example.test","app_metadata":{"provider":"email"},"user_metadata":{"registration_ticket":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}') ? 'error','Ticket não autoriza outro e-mail');
+select is(public.guard_candidate_signup('{"user":{"app_metadata":{"provider":"azure"}}}'), '{}'::jsonb,'OAuth corporativo preservado sem conceder perfil');
+reset role;
+
+insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
+ ('00000000-0000-4000-8000-000000000111','registered@example.test','{"provider":"email"}','{"registration_ticket":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}');
+select is((select cpf from private.candidate_registration where user_id='00000000-0000-4000-8000-000000000111'),'52998224725','Identificação vinculada atomicamente ao usuário');
+select ok(not exists(select 1 from private.candidate_signup_tickets where ticket_hash=encode(digest(repeat('d',64),'sha256'),'hex')),'Ticket consumido uma vez');
+update auth.users set email='registered-other@example.test' where id='00000000-0000-4000-8000-000000000111';
+select throws_ok($$insert into auth.users(id,email,raw_user_meta_data) values('00000000-0000-4000-8000-000000000114','registered@example.test','{"registration_ticket":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}')$$,'P0001','invalid_registration','Reutilização do ticket negada');
+
+insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data) values
+ ('00000000-0000-4000-8000-000000000112','primary-test@example.test',now(),'{"provider":"email"}'),
+ ('00000000-0000-4000-8000-000000000113','staff-test@example.test',now(),'{"provider":"email"}');
+insert into public.staff(user_id,display_name,password_login_enabled) values('00000000-0000-4000-8000-000000000112','Administrador fictício',true);
+insert into public.staff_roles select '00000000-0000-4000-8000-000000000112',id from public.roles where name='Superadministrador';
+update private.primary_administrator set user_id='00000000-0000-4000-8000-000000000112';
+update private.security_config set allow_local_password_staff=false;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000111","role":"authenticated","aal":"aal2","app_metadata":{"provider":"email"}}',true);
+select is(public.my_registration()->>'cpf_masked','***.***.***-25','Só titular recebe CPF mascarado');
+select ok(not public.is_primary_administrator(),'Candidato não administra equipe');
+select throws_ok($$select public.list_managed_staff()$$,'42501','permission_denied','Listagem sensível negada ao candidato');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000112","role":"authenticated","aal":"aal1","app_metadata":{"provider":"email"}}',true);
+select ok(not public.is_primary_administrator(),'Administrador sem segundo fator não gerencia equipe');
+select throws_ok($$select public.update_managed_staff('00000000-0000-4000-8000-000000000113','Teste',(select id from public.roles where name='Recrutador'),true,false)$$,'42501','permission_denied','MFA obrigatório na RPC administrativa');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000112","role":"authenticated","aal":"aal2","app_metadata":{"provider":"email"}}',true);
+select ok(public.is_primary_administrator(),'Administrador principal com MFA autorizado');
+select throws_ok($$select public.update_managed_staff('00000000-0000-4000-8000-000000000112','Teste',(select id from public.roles where name='Recrutador'),false,false)$$,'P0001','invalid_staff_target','Não desativa nem rebaixa a própria conta principal');
+select ok(not public.authorize_staff_password_reset('00000000-0000-4000-8000-000000000111'),'Não redefine senha de candidato');
+select ok(not public.authorize_staff_password_reset('00000000-0000-4000-8000-000000000112'),'Não redefine senha principal por gestão da equipe');
+reset role;
+set local role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+select lives_ok($$select public.provision_staff('00000000-0000-4000-8000-000000000112','00000000-0000-4000-8000-000000000113','Usuário fictício',(select id from public.roles where name='Superadministrador'),true,false)$$,'Servidor concede perfil sem prévio login');
+select throws_ok($$select public.provision_staff('00000000-0000-4000-8000-000000000113','00000000-0000-4000-8000-000000000111','Teste',(select id from public.roles where name='Recrutador'),true,false)$$,'42501','permission_denied','Outro administrador não cria usuários');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000113","role":"authenticated","aal":"aal2","app_metadata":{"provider":"email"}}',true);
+select ok(not public.has_permission('users.manage'),'Superadministrador delegado não administra usuários');
+select ok(not public.has_permission('roles.manage'),'Superadministrador delegado não manipula perfis');
+select ok(public.has_permission('candidates.read'),'Delegado conserva permissões de recrutamento');
+select throws_ok($$select public.manage_staff('registered@example.test','Teste',(select id from public.roles where name='Recrutador'),true)$$,'42501','permission_denied','RPC antiga não permite conceder novos acessos');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000112","role":"authenticated","aal":"aal2","app_metadata":{"provider":"email"}}',true);
+select lives_ok($$select public.update_managed_staff('00000000-0000-4000-8000-000000000113','Nome atualizado',(select id from public.roles where name='Recrutador'),true,true)$$,'Principal muda perfil e MFA');
+select lives_ok($$select public.update_managed_staff('00000000-0000-4000-8000-000000000113',$attack$'); DROP TABLE public.staff; --$attack$,(select id from public.roles where name='Recrutador'),true,true)$$,'Texto de ataque é tratado como valor, sem executar SQL');
+select is((select display_name from public.staff where user_id='00000000-0000-4000-8000-000000000113'),$attack$'); DROP TABLE public.staff; --$attack$,'Valor literal preservado, tabela intacta');
+select ok(public.authorize_staff_password_reset('00000000-0000-4000-8000-000000000113'),'Principal pode redefinir senha do usuário interno');
+reset role;
+set local role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+select lives_ok($$select public.finish_staff_password_reset('00000000-0000-4000-8000-000000000112','00000000-0000-4000-8000-000000000113')$$,'Redefinição bloqueia acesso de sessões anteriores');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000113","role":"authenticated","aal":"aal2","app_metadata":{"provider":"email"}}',true);
+select ok(not public.is_staff(),'JWT anterior sem nova sessão é rejeitado');
+select ok(not public.has_permission('candidates.read'),'JWT revogado perde acesso por RLS/RPC');
+reset role;
+select ok(exists(select 1 from public.audit_events where actor_id='00000000-0000-4000-8000-000000000112' and action='PASSWORD_RESET'),'Redefinição auditada sem senha');
+select * from finish();
+rollback;

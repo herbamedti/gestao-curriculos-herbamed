@@ -5,6 +5,7 @@ import { authenticate, microsoft } from './actions';
 import { Captcha } from '@/ui/captcha';
 import { Icon } from '@/ui/icon';
 import { config, features } from '@/lib/config';
+import { SignupFields } from './signup-fields';
 export function AuthPage({ mode, error }: { mode:'login'|'signup'|'recover'|'password'; error?:string }) {
   const titles={login:'Boas-vindas de volta.',signup:'Sua trajetória começa aqui.',recover:'Recupere seu acesso.',password:'Defina uma nova senha.'};
   const subtitles={login:'Entre para acompanhar suas próximas oportunidades.',signup:'Crie sua conta e dê o próximo passo com a Herbamed.',recover:'Enviaremos as instruções para o seu e-mail.',password:'Use pelo menos 12 caracteres para proteger sua conta.'};
@@ -18,6 +19,7 @@ export function AuthPage({ mode, error }: { mode:'login'|'signup'|'recover'|'pas
       {!emailFlowDisabled && <ActionForm action={authenticate} submit={{login:'Entrar',signup:'Criar minha conta',recover:'Enviar instruções',password:'Salvar nova senha'}[mode]}>
         <Hidden name="mode" value={mode}/>
         {mode!=='password' && <Field name="email" label="E-mail" type="email" required autoComplete="email" maxLength={254}/>}
+        {mode==='signup' && <SignupFields />}
         {mode!=='recover' && <Field name="password" label="Senha" type="password" required minLength={12} maxLength={128} autoComplete={mode==='login'?'current-password':'new-password'}/>}
         <Captcha siteKey={features.turnstile ? process.env.TURNSTILE_SITE_KEY : undefined}/>
         {mode==='signup' && <p className="muted">Ao continuar, você pode consultar como seus dados são tratados no <Link className="text-link" href="/privacidade">aviso de privacidade</Link>.</p>}

@@ -1,0 +1,149 @@
+import { spawn } from 'node:child_process';
+import { randomBytes, createHmac } from 'node:crypto';
+import assert from 'node:assert/strict';
+import { createClient } from '@supabase/supabase-js';
+import { Client } from 'pg';
+import { chromium } from '@playwright/test';
+
+process.loadEnvFile('.env.local');
+for (const key of ['SUPABASE_URL','DATABASE_URL']) if (!['localhost','127.0.0.1'].includes(new URL(process.env[key]).hostname)) throw new Error('Este smoke usa somente dados e banco locais.');
+const service = createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+const database = new Client({connectionString:process.env.DATABASE_URL});
+const base='http://localhost:3001';
+const suffix=randomBytes(7).toString('hex');
+const candidateEmail=`registration-${suffix}@example.test`;
+const staffEmail=`staff-${suffix}@example.test`;
+const principalEmail=`principal-${suffix}@example.test`;
+const password=`Teste!${randomBytes(20).toString('base64url')}Aa1`;
+const users=[]; let browser; let initialPrimary; let connected=false;
+const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3001'],{stdio:'ignore',windowsHide:true,
+  env:{...process.env,APP_ENV:'local',APP_URL:base,ENABLE_EMAIL:'true',ENABLE_TURNSTILE:'false',EMAIL_PROVIDER:'smtp',VERCEL:'1'}});
+function totp(secret) {
+ const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+ const bits=[...secret].map(c=>alphabet.indexOf(c).toString(2).padStart(5,'0')).join('');
+ const key=Buffer.from(bits.match(/.{8}/g).map(b=>parseInt(b,2)));
+ const counter=Buffer.alloc(8);counter.writeBigUInt64BE(BigInt(Math.floor(Date.now()/30000)));
+ const hash=createHmac('sha1',key).update(counter).digest();const offset=hash.at(-1)&15;
+ return String((hash.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0');
+}
+async function login(page,email,value=password) {
+ await page.goto(`${base}/entrar`); await page.getByLabel('E-mail',{exact:false}).fill(email);
+ await page.locator('input[name=password]').fill(value);await page.getByRole('button',{name:'Entrar',exact:true}).click();
+}
+async function saveAccess(page,card) {
+ const response=page.waitForResponse(result=>result.request().method()==='POST' && new URL(result.url()).pathname==='/rh/usuarios');
+ await card.getByRole('button',{name:'Salvar acesso',exact:true}).click();assert.equal((await response).status(),200);
+ await card.getByRole('button',{name:'Salvar acesso',exact:true}).waitFor();
+ await card.getByRole('status').filter({hasText:'Acesso atualizado'}).waitFor();
+}
+try {
+ await database.connect();connected=true;
+ initialPrimary=(await database.query('select user_id from private.primary_administrator')).rows[0]?.user_id;
+ for(let i=0;i<60;i++) {
+  if(server.exitCode!==null)throw new Error('Servidor temporário não iniciou.');
+  try{if((await fetch(`${base}/api/health`)).ok)break;}catch{}
+  await new Promise(r=>setTimeout(r,500));
+ }
+ browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'});
+ const candidate=await browser.newPage({extraHTTPHeaders:{'x-vercel-forwarded-for':`2001:db8::${suffix.slice(0,4)}:${suffix.slice(4,8)}`}});
+ await candidate.goto(`${base}/criar-conta`);
+ await candidate.locator('input[name=email]').fill(candidateEmail);
+ await candidate.locator('input[name=password]').fill(password);
+ await candidate.getByLabel('CPF').fill('52998224724');
+ await candidate.getByLabel('Data de nascimento').fill('1995-06-15');
+ await candidate.locator('form').evaluate(form=>{form.noValidate=true;});
+ await candidate.getByRole('button',{name:'Criar minha conta',exact:true}).click();
+ await candidate.getByRole('alert').filter({hasText:'Informe um CPF válido'}).waitFor();
+ assert.equal((await database.query('select id from auth.users where email=$1',[candidateEmail])).rowCount,0,'CPF inválido não cria usuário nem solicitação de e-mail');
+ await candidate.locator('input[name=email]').fill(candidateEmail);await candidate.locator('input[name=password]').fill(password);
+ await candidate.getByLabel('CPF').fill('52998224725');
+ await candidate.getByLabel('Data de nascimento').fill('2099-06-15');
+ await candidate.getByRole('button',{name:'Criar minha conta',exact:true}).click();
+ await candidate.getByRole('alert').filter({hasText:'data de nascimento válida'}).waitFor();
+ await candidate.getByLabel('CPF').fill('52998224725');await candidate.locator('input[name=password]').fill(password);
+ await candidate.getByLabel('Data de nascimento').fill('1995-06-15');
+ await candidate.locator('input[name=email]').fill('invalid@');
+ await candidate.getByRole('button',{name:'Criar minha conta',exact:true}).click();
+ await candidate.getByRole('alert').filter({hasText:'e-mail válido'}).waitFor();
+ await candidate.getByLabel('CPF').fill('52998224725');await candidate.getByLabel('Data de nascimento').fill('1995-06-15');await candidate.locator('input[name=password]').fill(password);
+ await candidate.locator('input[name=email]').fill(candidateEmail);
+ await candidate.getByRole('button',{name:'Criar minha conta',exact:true}).click();
+ await candidate.getByRole('status').filter({hasText:'Confira seu e-mail'}).waitFor({timeout:20000});
+ const record=(await database.query('select id,email_confirmed_at,raw_user_meta_data from auth.users where email=$1',[candidateEmail])).rows[0];
+ assert.ok(record);users.push(record.id);assert.equal(record.email_confirmed_at,null);
+ assert.ok(!record.raw_user_meta_data.cpf && !record.raw_user_meta_data.birth_date,'Dados privados fora do metadata');
+ assert.equal((await database.query('select cpf from private.candidate_registration where user_id=$1',[record.id])).rows[0].cpf,'52998224725');
+ const unconfirmed=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ANON_KEY,{auth:{persistSession:false}});
+ assert.ok((await unconfirmed.auth.signInWithPassword({email:candidateEmail,password})).error,'Login bloqueado antes da confirmação');
+ const bypass=await unconfirmed.auth.signUp({email:`bypass-${suffix}@example.test`,password});
+ assert.ok(bypass.error,'Auth direto sem ticket deve ser bloqueado pelo hook local');
+ const linked=await service.auth.admin.generateLink({type:'signup',email:candidateEmail,password});
+ assert.ok(!linked.error && linked.data.properties,'Link de confirmação fictício disponível');
+ await candidate.goto(`${base}/auth/confirm?token_hash=${linked.data.properties.hashed_token}&type=signup`);
+ await candidate.getByRole('button',{name:'Confirmar e continuar',exact:true}).click();
+ await candidate.waitForURL(`${base}/candidato`);
+ await candidate.goto(`${base}/candidato/conta`);
+ await candidate.getByRole('heading',{name:'Dados do cadastro'}).waitFor();
+ await candidate.getByText('CPF: ***.***.***-25',{exact:true}).waitFor();
+ const exportData=await candidate.request.get(`${base}/api/my-data`);
+ assert.equal(exportData.status(),200);assert.equal((await exportData.json()).registration.cpf,'52998224725');
+ await candidate.setViewportSize({width:390,height:844});
+ assert.ok(await candidate.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Conta responsiva');
+
+ const principal=await service.auth.admin.createUser({email:principalEmail,password,email_confirm:true});
+ assert.ok(!principal.error && principal.data.user); const principalId=principal.data.user.id;users.push(principalId);
+ await database.query('insert into public.staff(user_id,display_name,password_login_enabled) values($1,$2,true)',[principalId,'Principal fictício']);
+ await database.query("insert into public.staff_roles(user_id,role_id) select $1,id from public.roles where name='Superadministrador'",[principalId]);
+ await database.query('update private.primary_administrator set user_id=$1',[principalId]);
+ const principalPage=await browser.newPage({viewport:{width:1440,height:1000}});
+ await login(principalPage,principalEmail);await principalPage.waitForURL(`${base}/seguranca`);
+ await principalPage.getByRole('button',{name:'Configurar autenticador',exact:true}).click();
+ const secret=await principalPage.locator('code').innerText();
+ await principalPage.getByLabel('Código de seis dígitos').fill(totp(secret));
+ await principalPage.getByRole('button',{name:'Confirmar código',exact:true}).click();await principalPage.waitForURL(`${base}/rh`);
+ await principalPage.goto(`${base}/rh/usuarios`);
+ const create=principalPage.locator('section').filter({has:principalPage.getByRole('heading',{name:'Criar usuário interno',exact:true})});
+ await create.getByLabel('Nome',{exact:false}).fill('RH fictício');await create.getByLabel('E-mail de login').fill(staffEmail);
+ await create.getByLabel('Perfil de acesso').selectOption({label:'Superadministrador'});
+ await create.locator('input[name=password]').fill(password);await create.locator('input[name=confirm_password]').fill(password);
+ await create.getByLabel('Exigir verificação em duas etapas').uncheck();
+ await create.getByRole('button',{name:'Criar usuário',exact:true}).click();
+ await create.getByRole('status').filter({hasText:'Usuário criado'}).waitFor();
+ const staffId=(await database.query('select id from auth.users where email=$1',[staffEmail])).rows[0].id;users.push(staffId);
+ const staffPage=await browser.newPage();await login(staffPage,staffEmail);await staffPage.waitForURL(`${base}/rh`);
+ assert.equal(await staffPage.getByRole('link',{name:'Usuários',exact:true}).count(),0,'Admin delegado não vê administração de usuários');
+ await staffPage.goto(`${base}/rh/usuarios`);await staffPage.waitForURL(`${base}/acesso-negado`);
+ const oldClient=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ANON_KEY,{auth:{persistSession:false}});
+ assert.ok(!(await oldClient.auth.signInWithPassword({email:staffEmail,password})).error);
+ assert.equal((await oldClient.rpc('has_permission',{p_permission:'candidates.read'})).data,true);
+ const userCard=principalPage.locator('.managed-user').filter({hasText:staffEmail});
+ await userCard.getByText('Editar acesso e duas etapas',{exact:true}).click();
+ await userCard.getByLabel('Perfil de acesso').selectOption({label:'Recrutador'});
+ await saveAccess(principalPage,userCard);
+ await userCard.locator('summary').filter({hasText:'Alterar senha'}).click();
+ const newPassword=`Nova!${randomBytes(20).toString('base64url')}Aa1`;
+ await userCard.locator('input[name=password]').fill(newPassword);await userCard.locator('input[name=confirm_password]').fill(newPassword);
+ principalPage.once('dialog',dialog=>dialog.accept());await userCard.getByRole('button',{name:'Alterar senha',exact:true}).click();
+ await userCard.getByRole('status').filter({hasText:'Senha alterada'}).waitFor();
+ assert.equal((await oldClient.rpc('has_permission',{p_permission:'candidates.read'})).data,false,'Sessão anterior sem acesso');
+ const updatedClient=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ANON_KEY,{auth:{persistSession:false}});
+ assert.ok((await updatedClient.auth.signInWithPassword({email:staffEmail,password})).error,'Senha anterior rejeitada');
+ assert.ok(!(await updatedClient.auth.signInWithPassword({email:staffEmail,password:newPassword})).error,'Nova senha aceita');
+ assert.equal((await updatedClient.rpc('has_permission',{p_permission:'candidates.read'})).data,true,'Nova sessão conserva perfil');
+ await userCard.getByLabel('Exigir verificação em duas etapas').check();
+ await saveAccess(principalPage,userCard);
+ assert.equal((await updatedClient.rpc('has_permission',{p_permission:'candidates.read'})).data,false,'MFA reativado bloqueia sessão AAL1');
+ await userCard.getByLabel('Acesso ativo').uncheck();await saveAccess(principalPage,userCard);
+ assert.equal((await updatedClient.rpc('is_staff')).data,false);
+ await principalPage.setViewportSize({width:390,height:844});assert.ok(await principalPage.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Usuários responsivo');
+ console.log('PASS: CPF/e-mail/data, confirmação obrigatória, hook anti-bypass, privacidade, equipe/perfis/MFA, senha e sessões, desktop/mobile.');
+} finally {
+ await browser?.close();
+ if(connected){
+  if(initialPrimary)await database.query('update private.primary_administrator set user_id=$1',[initialPrimary]);
+  else await database.query('delete from private.primary_administrator where user_id=any($1::uuid[])',[users]);
+  for(const id of users){const removed=await service.auth.admin.deleteUser(id);assert.ok(!removed.error,'Limpeza de usuário fictício falhou');}
+  await database.end();
+ }
+ server.kill(); if(server.exitCode===null)await new Promise(resolve=>server.once('exit',resolve));
+}

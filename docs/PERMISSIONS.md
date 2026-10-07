@@ -1,5 +1,7 @@
 # Permissões
 
+Atualização de 06/10/2026: apenas o administrador principal registrado em tabela privada, com AAL2, pode gerenciar usuários e perfis. Essa restrição não é delegável por atribuição de perfil, mesmo Superadministrador. Criação, edição de acesso/MFA e redefinição de senha estão em `/rh/usuarios`; as permissões individuais de recrutamento e o escopo por vaga continuam valendo. A exigência individual `staff.mfa_enabled` é a decisão efetiva de MFA, independente do perfil. Veja `REGISTRATION_AND_STAFF_ADMIN.md`.
+
 `permissions` contém ações granulares; `roles` agrega permissões, escopo `all` ou `assigned` e exigência MFA. `staff_roles` associa usuário; `job_assignments` delimita o escopo `assigned`. A concessão não acontece por domínio de e-mail: requer vínculo explícito. Perfis iniciais são seeds de migration e podem ser alterados por administradores autorizados. O menu lê as permissões efetivas, mas cada página, RPC e download também verifica acesso.
 
 O perfil `Administrador RH` pode operar recrutamento e privacidade; exportação é separada. `Recrutador` não recebe exportação. `Entrevistador` e `Gestor` têm escopo por vaga. Auditoria possui somente leitura de logs/relatórios. Um administrador não pode alterar o próprio vínculo nem o próprio perfil em uma operação.

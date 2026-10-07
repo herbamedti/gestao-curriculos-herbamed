@@ -9,6 +9,7 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     env_file: .env
     environment:
+      EMAIL_PROVIDER: smtp
       SUPABASE_URL: http://host.docker.internal:54321
       CLAMAV_HOST: clamav
       SMTP_HOST: host.docker.internal

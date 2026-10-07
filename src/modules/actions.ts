@@ -5,6 +5,7 @@ import { session } from '@/modules/auth/session';
 import { safeError, type ActionResult } from '@/lib/result';
 import { log } from '@/lib/logger';
 import { candidateDetailsSchema, entrySchema, initialEntriesSchema } from '@/modules/candidates/details';
+import { questionSchema, stageSchema, stagesSchema } from '@/modules/jobs/process-schema';
 const uuid=z.uuid();
 const text=z.string().trim().min(1).max(10000);
 const optional=z.string().max(10000);
@@ -72,6 +73,13 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
       }
       case 'job-status': result=await client.rpc('set_job_status',{p_job_id:id('job_id'),p_status:z.enum(['draft','pending','published','paused','closed','cancelled','archived']).parse(get('status'))});break;
       case 'job-item': result=await client.rpc('add_job_item',{p_job_id:id('job_id'),p_kind:z.enum(['stage','question']).parse(get('kind')),p_label:str('label'),p_required:flag('required')});break;
+      case 'job-stages': result=await client.rpc('save_job_stages',{p_job_id:id('job_id'),p_stages:stagesSchema.parse(JSON.parse(z.string().max(30000).parse(get('stages')))),p_expected:z.array(stageSchema).max(50).parse(JSON.parse(z.string().max(30000).parse(get('expected_stages'))))});break;
+      case 'job-question': {
+        const kind=z.enum(['text','choice']).parse(get('kind'));
+        const data=questionSchema.parse({label:get('label'),required:flag('required'),kind,options:kind==='choice'?opt('options').split('\n').map(value=>value.trim()).filter(Boolean):[]});
+        result=await client.rpc('save_job_question',{p_job_id:id('job_id'),p_data:data,...(get('question_id')?{p_question_id:id('question_id')}:{})});break;
+      }
+      case 'delete-job-question': result=await client.rpc('delete_job_question',{p_job_id:id('job_id'),p_question_id:id('question_id')});break;
       case 'apply': {
         if(!flag('acknowledge')) return {ok:false,message:'Revise o aviso de privacidade antes de enviar.'};
         const answers:Record<string,string>={};
@@ -99,5 +107,12 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
     if(result.error) { log('mutation_rejected',{code:result.error.code}); return safeError(result.error.code,result.error.message); }
     revalidatePath('/','layout');
     return {ok:true,message:'Alterações salvas com sucesso.',...(destination?{redirect:destination}:{})};
-  } catch(error) { if(error instanceof z.ZodError) return {ok:false,message:`Verifique o campo ${String(error.issues[0]?.path[0] || 'informado')}. Os dados não foram salvos.`}; log('mutation_failed');return safeError(); }
+  } catch(error) {
+    if(error instanceof z.ZodError) {
+      if(get('op')==='job-stages')return safeError(undefined,error.issues.some(issue=>issue.message.includes('primeira etapa'))?'initial_stage_final':'invalid_stages');
+      if(get('op')==='job-question')return safeError(undefined,'invalid_question');
+      return {ok:false,message:`Verifique o campo ${String(error.issues[0]?.path[0] || 'informado')}. Os dados não foram salvos.`};
+    }
+    log('mutation_failed');return safeError();
+  }
 }

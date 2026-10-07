@@ -20,6 +20,18 @@ A trajetória mantém experiência, formação, curso, certificação e idioma. 
 
 ## Vagas e configurações
 
+O topo do menu mantém logo e subtítulo centralizado em uma linha, com rolagem somente nos links e rodapé separado. Em celular a marca fica no topo fixo da área de trabalho. Os cards de trajetória alinham ao início da grade: abrir uma seção não estica as demais.
+
+Em cadastros manuais, `legal_basis` é o registro da hipótese legal e da referência à avaliação feita pela Herbamed para tratar os dados recebidos. Continua obrigatório junto à origem e finalidade, com explicação em tela; não recebe uma base presumida pelo software.
+
+Etapas do processo aceitam edição de nome, inclusão, remoção, marcação como final e reordenação com Subir/Descer. Clique em Salvar etapas para persistir o conjunto. A primeira etapa deve ser aberta, com 1 a 50 etapas no total. A RPC `save_job_stages` exige `jobs.manage` e o MFA vigente, trava a vaga, valida o estado anterior contra alterações concorrentes e salva a ordem atomicamente, preservando os IDs. Etapas referenciadas por candidaturas ou eventos não podem ser excluídas nem ter sua condição final reinterpretada; podem ser renomeadas ou reordenadas. As FKs, RLS e auditoria existentes continuam ativas.
+
+Perguntas aceitam Texto (resposta livre) ou Opção (escolha única), e podem ser obrigatórias ou opcionais. O gestor inclui, edita ou remove alternativas individualmente ou por `;`, com 2 a 30 alternativas distintas de até 200 caracteres e até 50 perguntas por vaga. As RPCs `save_job_question` e `delete_job_question` exigem a mesma permissão e MFA. Perguntas respondidas não podem ser excluídas ou mudar de conteúdo/tipo/opções; a obrigatoriedade para novas candidaturas pode ser ajustada. Perguntas antigas recebem o tipo Texto sem alterar respostas existentes. `submit_application` verifica perguntas da vaga, respostas obrigatórias, limites e alternativas válidas no servidor, incluindo chamadas diretas à RPC.
+
+Após gravar uma candidatura, a navegação para o acompanhamento ocorre no servidor, preservando o redirecionamento mesmo quando a revalidação substitui o formulário pela indicação de candidatura existente.
+
+Antes de publicar, aplicar `202610020004_job_process_editor.sql` no banco hospedado. Aplicada e testada localmente; nenhuma variável de ambiente nova.
+
 Responsabilidades, requisitos e benefícios são listas de itens adicionáveis, editáveis e removíveis. A gravação mantém as colunas de texto existentes, com um item por linha; textos antigos são preservados. O detalhe público apresenta listas com marcadores.
 
 Os três campos aceitam vários itens separados por `;`, ao clicar em Adicionar ou pressionar Enter. Espaços e fragmentos vazios são removidos; duplicados não são incluídos e lotes que excedam o limite são rejeitados integralmente. A separação só ocorre na inclusão nova, sem reinterpretar conteúdo já cadastrado. A ajuda abaixo do campo tem espaçamento próprio e os itens adicionados têm fundo suave diferente do restante do card.

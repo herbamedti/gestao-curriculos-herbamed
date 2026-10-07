@@ -1,0 +1,41 @@
+# Cadastro e administração da equipe
+
+## Cadastro público
+
+`/criar-conta` exige e-mail, senha com pelo menos 12 caracteres, CPF e data de nascimento. Há validação no navegador, no servidor e, para a identificação, na RPC SQL. O CPF aceita números ou máscara e confere os dois dígitos verificadores; não consulta a Receita Federal nem comprova titularidade. A data deve existir no calendário, estar entre 1900 e a data atual no fuso de São Paulo. O e-mail passa por validação de formato; a posse da caixa é verificada pelo link do Supabase, com **Confirm email** ativo.
+
+Antes de chamar Auth, o servidor emite uma autorização aleatória válida por dez minutos. Somente o hash da autorização é armazenado, junto aos dados privados; ela vincula o e-mail aos dados já validados e às quotas consumidas. O hook PostgreSQL **Before User Created**, `public.guard_candidate_signup`, exige essa autorização em novos cadastros públicos por senha, incluindo chamadas diretas à API Auth. Login Azure continua permitido, sem conceder perfil interno. A API administrativa do Auth, restrita ao servidor, continua disponível para provisionamento da equipe e fixtures locais.
+
+CPF e nascimento ficam em `private.candidate_registration`, com RLS e sem acesso direto por anon, authenticated ou service role. Não entram em metadata de usuário/JWT, listas de candidatos ou PDFs. A Conta mostra CPF mascarado e nascimento somente ao titular; a exportação pessoal inclui os dados completos. Contas antigas continuam válidas e não recebem dados inventados. Uma correção pode ser solicitada na seção Privacidade; a execução administrativa dessas correções ainda depende do atendimento do pedido.
+
+Quotas persistentes valem com ou sem e-mail: cinco tentativas por origem/hora, três por minuto e três para o mesmo e-mail/hora, com teto global de cem/hora. São janelas de calendário, não limites de tráfego em borda. A origem usa os headers de IP escritos pela Vercel; fora da Vercel, há uma quota compartilhada conservadora para não confiar em headers falsificáveis. HMAC separa origem/e-mail sem armazenar o IP bruto na quota. Dados de quota duram até um dia; tickets vencidos são limpos no próximo cadastro aceito. Honeypot permanece ativo e Turnstile pode ser reativado com suas chaves. Distribuição de bots por muitas origens ainda exige controles de borda e os limites nativos do Auth.
+
+## Publicação e e-mail
+
+1. Aplique as migrations pendentes no Supabase hospedado, incluindo `202610050001_graph_email_hook.sql` e `202610060001_registration_and_staff_admin.sql`. Use `npx supabase db push --dry-run` antes de `npx supabase db push`, conferindo o projeto vinculado. Não use reset nem seed na nuvem.
+2. Publique este código na Vercel. Siga `MICROSOFT_GRAPH_EMAIL.md` para `EMAIL_PROVIDER=microsoft_graph`, os quatro valores `MS_GRAPH_*`, `SUPABASE_SEND_EMAIL_HOOK_SECRET`, `APP_URL` e `ENABLE_EMAIL=true`. Não coloque credenciais no Git nem altere `.env.local` para apontar à nuvem.
+3. No Supabase, habilite **Authentication → Hooks → Before User Created**, selecione **Postgres function**, schema `public`, função `guard_candidate_signup`. Não é uma URL HTTP e não exige outro segredo na Vercel. A migration fornece os grants; não conceda acesso direto às tabelas privadas. Faça essa ativação junto à publicação: versões antigas do formulário não emitem o ticket.
+4. Configure **Send Email Hook** como HTTP, apontando a `https://gestao-curriculos-herbamed.vercel.app/api/auth/send-email`, usando o segredo de assinatura correspondente ao da Vercel. A URL deve estar pública, sem proteção de login da Vercel. Ative após redeploy com as credenciais de Graph.
+5. Em **Authentication → Sign In / Providers → Email**, mantenha Email/senha, **Confirm email** e **Secure email change** habilitados. Em **URL Configuration**, configure Site URL e redirecionamentos para o domínio estável. Os links enviados pelo hook usam `APP_URL`, não dados fornecidos no cadastro.
+6. Revise **Authentication → Rate Limits**: limite de envio/hora e intervalo entre e-mails de confirmação. Comece com um teto de envio adequado à demonstração (por exemplo, trinta/hora) e intervalo de sessenta segundos. Isso limita também recuperação e reenvio, que não passam pela quota de novos cadastros da aplicação. Não habilite confirmação automática.
+7. Teste com conta fictícia: CPF inválido não cria usuário nem solicita e-mail; cadastro válido recebe link, login antes de confirmar falha, clique em **Confirmar e continuar** libera acesso. Teste também recuperação. Resposta 202 do Graph significa aceite; confirme a chegada na caixa/spam.
+
+Se o servidor receber uma sessão imediatamente no cadastro com envio ativo, encerra essa sessão e informa erro de configuração. Isso detecta **Confirm email** desligado, mas não substitui a configuração do painel; uma conta auto-confirmada pode entrar diretamente pelo Auth. **Before User Created** precisa estar ativo para fechar o cadastro público direto. Ambos os hooks estão disponíveis nos planos Free e Pro segundo a documentação do Supabase.
+
+## Equipe
+
+`/rh/usuarios` permite à conta principal criar um usuário por e-mail/senha, atribuir um perfil ativo, ativar/desativar acesso, editar nome/perfil e escolher a exigência de duas etapas. O padrão é ativo e com MFA exigido. A exigência individual vale independentemente do perfil; desativá-la preserva o autenticador já cadastrado. A configuração de perfil mantém suas permissões e escopo de vagas.
+
+A conta principal é o primeiro Superadministrador ativo já existente, ordenado por criação e ID; a migration não usa endereço real. Em banco novo, o primeiro vínculo Superadministrador inicializa esse registro. O registro é privado, não editável pela API. Verifique a identificação antes da publicação se houver mais de um Superadministrador histórico. Não é necessário recriar a conta principal nem redefinir sua senha.
+
+Somente essa conta, em sessão AAL2, administra usuários e perfis: a restrição vale na ação, nas RPCs e nas permissões efetivas usadas por páginas/RLS/menu. Outro usuário, mesmo com perfil Superadministrador, recebe as demais permissões do perfil, mas não `users.manage`/`roles.manage`. A conta principal não pode ser desativada, rebaixada ou ter a senha redefinida pela tela de equipe; mudanças próprias usam Conta.
+
+O administrador define uma senha forte e a compartilha por canal seguro. Contas internas criadas por ele são confirmadas administrativamente, sem depender de convite por e-mail, e entram pela tela `/entrar`; com duas etapas exigidas, configuram o autenticador antes de acessar a gestão. Um e-mail já cadastrado não é reaproveitado nem tem a senha alterada pela criação. A criação no Auth e concessão do acesso no domínio são duas operações: uma falha de concessão tenta remover somente a conta recém-criada. Se a limpeza falhar, há conta sem acesso interno e o log mostra apenas um código fixo.
+
+O principal pode redefinir senhas de contas internas por senha. Contas Azure continuam administradas pela Microsoft. Após redefinição, a aplicação registra auditoria sem senha e bloqueia as sessões internas anteriores por data de criação da sessão Auth; refresh de uma sessão antiga não libera a gestão. Um novo login com a nova senha recebe nova sessão. A desativação do usuário também retira permissões imediatamente nas verificações de banco. Tokens Auth já emitidos podem continuar válidos até expirar; o bloqueio protege o acesso de gestão da aplicação.
+
+## Verificação local
+
+`npm run check`, `npm run test:db` e `npm run test:e2e:registration`. O último inicia servidor temporário na porta 3001, testa apenas Supabase local e usa contas fictícias. Durante o teste, aponta temporariamente o registro principal ao fixture e restaura o valor antes de remover os usuários; não execute enquanto outra pessoa testa administração local. A stack local carrega o hook em `supabase/config.toml`; uma stack já iniciada deve ser reiniciada sem apagar volumes. O Docker continua usando SMTP/Mailpit, separado do Graph hospedado.
+
+Referências: [Before User Created](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook), [Auth Hooks e planos](https://supabase.com/docs/guides/auth/auth-hooks), [limites do Auth](https://supabase.com/docs/guides/auth/rate-limits), [headers de origem na Vercel](https://vercel.com/docs/headers/request-headers).

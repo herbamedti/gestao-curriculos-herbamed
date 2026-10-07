@@ -1,11 +1,13 @@
 'use server';
-import nodemailer from 'nodemailer';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { session } from './session';
 import type { ActionResult } from '@/lib/result';
 import { serviceDb } from '@/lib/service-db';
 import { features } from '@/lib/config';
+import { emailConfigured, sendEmail } from '@/modules/email/sender';
+import { MailDeliveryError } from '@/modules/email/graph';
+import { log } from '@/lib/logger';
 
 const codeSchema = z.string().trim().toUpperCase().regex(/^[A-F0-9]{10}$/);
 const totpSchema = z.string().regex(/^\d{6}$/);
@@ -17,7 +19,7 @@ export async function sendAccountEmailCode(): Promise<ActionResult> {
   const { user } = await session();
   if (!features.email) return { ok: false, message: 'O envio de e-mail está temporariamente desativado. Use o aplicativo autenticador.' };
   const service = serviceDb();
-  if (!user.email || !user.email_confirmed_at || !process.env.SMTP_HOST || !service)
+  if (!user.email || !user.email_confirmed_at || !emailConfigured() || !service)
     return { ok: false, message: 'A confirmação por e-mail não está disponível para esta conta.' };
   const { data, error } = await service.rpc('issue_account_email_code', { p_user_id: user.id });
   const issued = z.object({ code: codeSchema, email: emailSchema }).safeParse(data);
@@ -25,20 +27,14 @@ export async function sendAccountEmailCode(): Promise<ActionResult> {
     return { ok: false, message: 'Aguarde antes de solicitar outro código. O limite é de cinco envios por hora.' };
   const { code, email } = issued.data;
   try {
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 25,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
-    });
-    await transport.sendMail({
-      from: process.env.SMTP_FROM || 'Herbamed Carreiras <no-reply@example.test>',
+    await sendEmail({
       to: email,
       subject: 'Código de confirmação da conta Herbamed',
       text: `Seu código de confirmação é ${code}. Ele vence em 10 minutos. Se você não solicitou esta mudança, ignore esta mensagem.`,
     });
     return { ok: true, message: 'Enviamos um código para o e-mail atual da conta. Ele vale por 10 minutos.' };
-  } catch {
+  } catch (error) {
+    log('email.account_failed', { code: error instanceof MailDeliveryError ? error.code : 'mail_provider_unavailable' });
     try {
       await service.rpc('revoke_account_email_code', { p_user_id: user.id, p_code: code });
     } catch {

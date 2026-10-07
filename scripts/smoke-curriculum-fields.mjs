@@ -33,8 +33,10 @@ async function login(page, email) {
   await page.waitForURL(url => !url.pathname.startsWith('/entrar'), { timeout: 30000 });
 }
 async function save(page, name) {
-  await page.getByRole('button', { name, exact: true }).click();
-  await page.getByRole('status').filter({ hasText: 'Alterações salvas' }).waitFor({ timeout: 30000 });
+  const button=page.getByRole('button', { name, exact: true });
+  const form=button.locator('xpath=ancestor::form');
+  await button.click();
+  await form.getByRole('status').filter({ hasText: 'Alterações salvas' }).waitFor({ timeout: 30000 });
 }
 async function chip(page, label, value) {
   const section=page.locator('.editable-list').filter({has:page.getByRole('heading',{name:label,exact:true})});
@@ -44,6 +46,12 @@ async function chip(page, label, value) {
 async function staged(page, kind, label, title) {
   const section=page.getByRole('region',{name:label,exact:true});
   await section.locator('summary').click();
+  if(kind==='experience'){
+    await section.locator(`input[name="draft_${kind}_title"]`).waitFor({state:'visible'});
+    const neighboring=page.getByRole('region',{name:'Histórico Acadêmico',exact:true});
+    assert.equal(await neighboring.locator('details[open]').count(),0,'Seção vizinha permanece fechada');
+    assert.ok(await section.evaluate(element=>element.getBoundingClientRect().height)>await neighboring.evaluate(element=>element.getBoundingClientRect().height)+100,'Card fechado não estica com o vizinho');
+  }
   await section.locator(`input[name="draft_${kind}_title"]`).fill(title);
   if(kind!=='language')await section.locator(`input[name="draft_${kind}_organization"]`).fill('Instituição fictícia');
   if(kind==='language')await section.getByLabel('Nível do idioma').selectOption('Intermediário');
@@ -165,6 +173,13 @@ try {
   await staffPage.getByLabel('Código de seis dígitos').fill(totp(secret));
   await staffPage.getByRole('button', { name: 'Confirmar código', exact: true }).click();
   await staffPage.waitForURL('**/rh', { timeout: 30000 });
+  await staffPage.setViewportSize({width:1440,height:600});
+  const brandTop=await staffPage.locator('.sidebar-header').evaluate(element=>element.getBoundingClientRect().top);
+  await staffPage.locator('.sidebar-scroll').evaluate(element=>{element.scrollTop=element.scrollHeight;});
+  assert.equal(await staffPage.locator('.sidebar-header').evaluate(element=>element.getBoundingClientRect().top),brandTop,'Logo fixa durante rolagem do menu');
+  assert.ok(await staffPage.locator('.sidebar-header .brand>span').evaluate(element=>element.getBoundingClientRect().height<20),'Título do menu em uma linha');
+  await staffPage.screenshot({path:'artifacts/curriculum-fields/sidebar-fixed.png'});
+  await staffPage.setViewportSize({width:1440,height:1000});
   await staffPage.goto(`${base}/rh/candidatos/novo`);
   await staffPage.getByLabel('Nome completo').fill('Currículo Fictício Manual');
   await staffPage.locator('input[name="email"]').fill(`manual.${token}@example.test`);
@@ -230,19 +245,76 @@ try {
   await staffPage.screenshot({ path: 'artifacts/curriculum-fields/job-editor.png', fullPage: true });
   await staffPage.getByRole('button', { name: 'Salvar vaga', exact: true }).click(); await staffPage.waitForURL(/\/rh\/vagas\/[0-9a-f-]+$/, { timeout: 30000 });
   const job = (await database.query('select id,slug from public.jobs where created_by=$1 and title=$2', [staffId, `Vaga fictícia ${token}`])).rows[0];
+  let stagesCard=staffPage.locator('.card').filter({has:staffPage.getByRole('heading',{name:'Etapas do processo',exact:true})});
+  await stagesCard.getByLabel('Etapa 2 · Nome').fill('Análise inicial fictícia');
+  await stagesCard.getByRole('button',{name:'Subir etapa 2',exact:true}).click();
+  await stagesCard.getByRole('button',{name:'Adicionar etapa',exact:true}).click();
+  await stagesCard.getByLabel('Etapa 8 · Nome').fill('Etapa temporária');
+  await stagesCard.getByRole('button',{name:'Remover etapa 8',exact:true}).click();
+  await stagesCard.getByRole('button',{name:'Adicionar etapa',exact:true}).click();
+  await stagesCard.getByLabel('Etapa 8 · Nome').fill('Avaliação técnica fictícia');
+  await stagesCard.getByRole('button',{name:'Subir etapa 8',exact:true}).click();
+  await save(staffPage, 'Salvar etapas');
+  await stagesCard.getByLabel('Etapa 1 · Nome').waitFor();
+  await staffPage.reload();
+  stagesCard=staffPage.locator('.card').filter({has:staffPage.getByRole('heading',{name:'Etapas do processo',exact:true})});
+  assert.equal(await stagesCard.getByLabel('Etapa 1 · Nome').inputValue(),'Análise inicial fictícia');
+  assert.equal(await stagesCard.getByLabel('Etapa 7 · Nome').inputValue(),'Avaliação técnica fictícia');
+  assert.equal((await database.query('select count(*)::integer as count from public.job_stages where job_id=$1',[job.id])).rows[0].count,8);
+  await stagesCard.screenshot({path:'artifacts/curriculum-fields/process-stages.png'});
+  const questions=staffPage.locator('.card').filter({has:staffPage.getByRole('heading',{name:'Perguntas para candidatura',exact:true})});
+  await questions.locator('summary').filter({hasText:'Adicionar pergunta'}).click();
+  let newQuestion=questions.locator('form').filter({has:staffPage.locator('input[name="op"][value="job-question"]')});
+  await newQuestion.getByRole('textbox',{name:'Pergunta *',exact:true}).fill('Disponibilidade fictícia?');
+  await newQuestion.getByLabel('Tipo de pergunta').selectOption('choice');
+  await newQuestion.getByLabel('Nova opção').fill('Manhã; Tarde; Noite');
+  await newQuestion.getByLabel('Nova opção').press('Enter');
+  await newQuestion.getByRole('button',{name:'Remover Noite',exact:true}).click();
+  await newQuestion.getByLabel('Resposta obrigatória').check();
+  await newQuestion.getByRole('button',{name:'Adicionar pergunta',exact:true}).click();
+  await questions.getByText('Disponibilidade fictícia?',{exact:true}).waitFor();
+  await staffPage.reload();
+  await questions.locator('summary').filter({hasText:'Adicionar pergunta'}).click();
+  newQuestion=questions.locator('form').filter({has:staffPage.locator('input[name="op"][value="job-question"]')}).filter({hasNot:staffPage.locator('input[name="question_id"]')});
+  await newQuestion.getByRole('textbox',{name:'Pergunta *',exact:true}).fill('Relate uma experiência fictícia');
+  await newQuestion.getByRole('button',{name:'Adicionar pergunta',exact:true}).click();
+  await questions.getByText('Relate uma experiência fictícia',{exact:true}).waitFor();
+  await staffPage.reload();
+  const textQuestion=questions.locator('.process-editor-item').filter({hasText:'Relate uma experiência fictícia'});
+  await textQuestion.getByText('Editar pergunta',{exact:true}).click();
+  await textQuestion.getByRole('textbox',{name:'Pergunta *',exact:true}).fill('Conte uma experiência fictícia');
+  await textQuestion.getByRole('button',{name:'Salvar pergunta',exact:true}).click();
+  await questions.getByText('Conte uma experiência fictícia',{exact:true}).waitFor();
+  await questions.screenshot({path:'artifacts/curriculum-fields/job-questions.png'});
+  await staffPage.setViewportSize({width:390,height:844});
+  assert.ok(await staffPage.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Editor de etapas e perguntas sem overflow mobile');
+  await staffPage.setViewportSize({width:1440,height:1000});
   await staffPage.locator('select[name="status"]').selectOption('published'); await save(staffPage, 'Atualizar status');
+  activePage=page;
+  await page.goto(`${base}/vagas/${job.slug}/candidatar`);
+  await page.getByText('Currículo completo para candidatura.',{exact:true}).waitFor();
+  await page.getByLabel('Disponibilidade fictícia?').selectOption('Tarde');
+  await page.getByLabel('Conte uma experiência fictícia').fill('Experiência fictícia de teste em equipe.');
+  await page.locator('input[name="acknowledge"]').check();
+  await page.screenshot({path:'artifacts/curriculum-fields/application-questions.png',fullPage:true});
+  await page.getByRole('button',{name:'Enviar candidatura',exact:true}).click();
+  await page.waitForURL('**/candidato/candidaturas',{timeout:30000});
+  assert.deepEqual((await database.query('select answer from public.application_answers where application_id=(select id from public.applications where job_id=$1 and candidate_id=$2) order by answer',[job.id,candidateId])).rows.map(row=>row.answer),['Experiência fictícia de teste em equipe.','Tarde']);
   await staffPage.goto(`${base}/vagas/${job.slug}`);
   assert.equal(await staffPage.locator('.job-bullets').first().locator('li').count(), 2);
   await staffPage.getByText(`Nível editado ${token}`, { exact: true }).waitFor();
   await staffPage.screenshot({ path: 'artifacts/curriculum-fields/job-public.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('OK: cards iniciais completos do gestor/candidato, competências, edição, validação de rascunho, PDF, listas por ponto e vírgula e espaçamento desktop/mobile.');
+  console.log('OK: currículo/PDF, cards independentes, topo fixo, etapas editáveis e ordenáveis, perguntas texto/opção e candidatura com respostas, desktop/mobile.');
 } catch(error) {
   await activePage?.screenshot({path:'artifacts/curriculum-fields/failure.png',fullPage:true});
   throw error;
 } finally {
   await browser?.close(); server.kill();
   if (staffId) {
+    await database.query('delete from public.application_events where application_id in (select a.id from public.applications a join public.jobs j on j.id=a.job_id where j.created_by=$1)', [staffId]);
+    await database.query('delete from public.application_answers where application_id in (select a.id from public.applications a join public.jobs j on j.id=a.job_id where j.created_by=$1)', [staffId]);
+    await database.query('delete from public.applications where job_id in (select id from public.jobs where created_by=$1)', [staffId]);
     await database.query('delete from public.jobs where created_by=$1', [staffId]);
     await database.query('delete from public.candidates where created_by=$1 or user_id=$2', [staffId, users[0]?.id]);
     await database.query('delete from public.experience_levels where name in ($1,$2)', [`Nível ${token}`, `Nível editado ${token}`]);

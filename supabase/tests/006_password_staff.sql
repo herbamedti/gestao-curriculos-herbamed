@@ -19,6 +19,8 @@ insert into public.staff_roles(user_id,role_id)
  select s.user_id,r.id from public.staff s cross join public.roles r
  where s.user_id in ('00000000-0000-4000-8000-000000000091','00000000-0000-4000-8000-000000000092') and r.name='Superadministrador';
 select ok((select mfa_enabled from public.staff where user_id='00000000-0000-4000-8000-000000000091'),'Gestor por senha mantém MFA ativo');
+-- This fixture represents the principal account, not a delegated admin.
+update private.primary_administrator set user_id='00000000-0000-4000-8000-000000000091';
 
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000091","role":"authenticated","aal":"aal1","app_metadata":{"provider":"email"}}',true);

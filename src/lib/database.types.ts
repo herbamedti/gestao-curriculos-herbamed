@@ -582,21 +582,27 @@ export type Database = {
         Row: {
           id: string
           job_id: string
+          kind: string
           label: string
+          options: string[]
           position: number
           required: boolean
         }
         Insert: {
           id?: string
           job_id: string
+          kind?: string
           label: string
+          options?: string[]
           position?: number
           required?: boolean
         }
         Update: {
           id?: string
           job_id?: string
+          kind?: string
           label?: string
+          options?: string[]
           position?: number
           required?: boolean
         }
@@ -1249,6 +1255,10 @@ export type Database = {
         Returns: undefined
       }
       authorize_download: { Args: { p_document_id: string }; Returns: string }
+      authorize_staff_password_reset: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       bootstrap_password_staff: {
         Args: { p_display_name: string; p_user_id: string }
         Returns: string
@@ -1261,6 +1271,7 @@ export type Database = {
         Args: { p_candidate_id: string; p_permission: string }
         Returns: boolean
       }
+      claim_email_delivery: { Args: { p_key: string }; Returns: Json }
       consume_account_email_code: { Args: { p_code: string }; Returns: boolean }
       consume_signup_quota: { Args: { p_key: string }; Returns: boolean }
       create_manual_candidate: { Args: { p_data: Json }; Returns: string }
@@ -1270,6 +1281,10 @@ export type Database = {
       }
       delete_catalog: {
         Args: { p_catalog: string; p_id: string }
+        Returns: undefined
+      }
+      delete_job_question: {
+        Args: { p_job_id: string; p_question_id: string }
         Returns: undefined
       }
       export_candidates: {
@@ -1283,15 +1298,38 @@ export type Database = {
         }[]
       }
       export_my_data: { Args: never; Returns: Json }
+      finish_email_delivery: {
+        Args: { p_key: string; p_lease: string; p_sent: boolean }
+        Returns: boolean
+      }
+      finish_staff_password_reset: {
+        Args: { p_actor_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      guard_candidate_signup: { Args: { event: Json }; Returns: Json }
       has_permission: {
         Args: { p_job_id?: string; p_permission: string }
         Returns: boolean
       }
+      is_primary_administrator: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       issue_account_email_code: { Args: { p_user_id: string }; Returns: Json }
       link_candidate_to_job: {
         Args: { p_candidate_id: string; p_job_id: string; p_note: string }
         Returns: string
+      }
+      list_managed_staff: {
+        Args: never
+        Returns: {
+          active: boolean
+          display_name: string
+          email: string
+          is_primary: boolean
+          mfa_enabled: boolean
+          password_login_enabled: boolean
+          role_id: string
+          user_id: string
+        }[]
       }
       manage_candidate_curriculum: {
         Args: { p_candidate_id: string; p_data: Json }
@@ -1335,9 +1373,32 @@ export type Database = {
         }
         Returns: undefined
       }
+      my_registration: { Args: never; Returns: Json }
       owns_application: { Args: { p_application_id: string }; Returns: boolean }
       owns_candidate: { Args: { p_candidate_id: string }; Returns: boolean }
       owns_job_application: { Args: { p_job_id: string }; Returns: boolean }
+      prepare_candidate_signup: {
+        Args: {
+          p_birth_date: string
+          p_cpf: string
+          p_email: string
+          p_email_key: string
+          p_origin_key: string
+          p_ticket_hash: string
+        }
+        Returns: boolean
+      }
+      provision_staff: {
+        Args: {
+          p_active: boolean
+          p_actor_id: string
+          p_mfa: boolean
+          p_name: string
+          p_role_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       publish_privacy_policy: {
         Args: { p_body: string; p_title: string; p_version: string }
         Returns: string
@@ -1387,6 +1448,14 @@ export type Database = {
         Returns: string
       }
       save_job: { Args: { p_data: Json; p_job_id?: string }; Returns: string }
+      save_job_question: {
+        Args: { p_data: Json; p_job_id: string; p_question_id?: string }
+        Returns: string
+      }
+      save_job_stages: {
+        Args: { p_expected: Json; p_job_id: string; p_stages: Json }
+        Returns: undefined
+      }
       save_privacy: {
         Args: { p_policy_id: string; p_talent_pool: boolean }
         Returns: undefined
@@ -1422,6 +1491,16 @@ export type Database = {
         Returns: string
       }
       update_account_name: { Args: { p_name: string }; Returns: undefined }
+      update_managed_staff: {
+        Args: {
+          p_active: boolean
+          p_mfa: boolean
+          p_name: string
+          p_role_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       update_profile_entry: {
         Args: { p_candidate_id: string; p_data: Json; p_entry_id: string }
         Returns: undefined

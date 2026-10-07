@@ -44,6 +44,8 @@ try {
   await page.goto(`${base}/criar-conta`);
   await page.getByLabel('E-mail').fill(email);
   await page.getByLabel('Senha').fill(password);
+  await page.getByLabel('CPF', {exact:false}).fill('52998224725');
+  await page.getByLabel('Data de nascimento').fill('1995-06-15');
   await page.getByRole('button',{name:'Criar minha conta',exact:true}).click();
   await page.waitForURL('**/candidato',{timeout:30000});
   const signedIn = await client.auth.signInWithPassword({email,password});

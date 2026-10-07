@@ -29,7 +29,7 @@ export function StaffCurriculumForm({candidate,areas,interests=[],areasError=fal
     {manual?<><h3>Origem e finalidade do cadastro</h3><div className="form-grid">
       <Field name="source" label="Origem (indicação, evento, cadastro manual…)" value={candidate?.source} required maxLength={100} />
       <Field name="processing_purpose" label="Finalidade do tratamento" value={candidate?.processing_purpose||'Recrutamento e seleção'} required maxLength={200} />
-      <div className="full"><TextArea name="legal_basis" label="Base legal avaliada pela Herbamed" value={candidate?.legal_basis||''} required /></div>
+      <div className="full"><TextArea name="legal_basis" label="Base legal avaliada pela Herbamed" value={candidate?.legal_basis||''} required /><p className="muted">Registre a hipótese legal e a referência da avaliação aprovada pela Herbamed para utilizar estes dados no recrutamento. Este registro não substitui a avaliação de privacidade nem o aviso ao candidato.</p></div>
     </div></>:<><Hidden name="source" value={candidate.source} /><Hidden name="processing_purpose" value={candidate.processing_purpose} /><Hidden name="legal_basis" value={candidate.legal_basis||''} /><p className="muted">O e-mail de acesso da pessoa candidata é mantido; alterações nessa identidade exigem o fluxo de conta.</p></>}
   </ActionForm>;
 }

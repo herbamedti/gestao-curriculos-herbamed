@@ -2,14 +2,16 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { createHmac } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { db } from '@/lib/supabase';
 import { config, features, isConfigured } from '@/lib/config';
 import { serviceDb } from '@/lib/service-db';
 import { log } from '@/lib/logger';
 import { loginDiagnostic, loginFailure } from './login-error';
 import type { ActionResult } from '@/lib/result';
-const credentials = z.object({ email: z.email().max(254), password: z.string().min(12).max(128) });
+import { registrationSchema } from './registration-schema';
+import { signupQuotaKeys } from './signup-origin';
+const credentials = z.object({ email: z.string().trim().toLowerCase().pipe(z.email().max(254)), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
   if (form.get('website')) return false;
   if (!features.turnstile) return true;
@@ -42,27 +44,44 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       await client.auth.signOut({scope:'global'});
       return {ok:true,message:'Senha alterada. Entre novamente para continuar.',redirect:'/entrar'};
     }
-    const {email,password}=credentials.parse(Object.fromEntries(form));
+    const submitted = Object.fromEntries(form);
+    if (mode === 'signup') {
+      const checked = registrationSchema.safeParse(submitted);
+      if (!checked.success) return {ok:false,message:checked.error.issues[0]?.path[0] === 'email' ? 'Informe um e-mail válido.' : checked.error.issues[0]?.message || 'Confira os dados do cadastro.'};
+    }
+    const {email,password}=credentials.parse(submitted);
     if(mode==='signup') {
+      const parsed = registrationSchema.safeParse(Object.fromEntries(form));
+      if (!parsed.success) return {ok:false,message:parsed.error.issues[0]?.message || 'Confira os dados do cadastro.'};
+      const service = serviceDb();
+      if (!service) return {ok:false,message:'O cadastro está indisponível neste ambiente.'};
+      const keys = signupQuotaKeys(await headers(), process.env.SUPABASE_SERVICE_ROLE_KEY!, parsed.data.email, process.env.VERCEL === '1');
+      const ticket = randomBytes(32).toString('hex');
+      const reserved = await service.rpc('prepare_candidate_signup', {
+        p_origin_key: keys.origin, p_email_key: keys.email, p_email: parsed.data.email,
+        p_cpf: parsed.data.cpf, p_birth_date: parsed.data.birth_date,
+        p_ticket_hash: createHash('sha256').update(ticket).digest('hex'),
+      });
+      if (reserved.error) return {ok:false,message:'O cadastro está indisponível. Tente novamente mais tarde.'};
+      if (!reserved.data) return {ok:false,message:'Muitas tentativas de cadastro. Aguarde antes de tentar novamente.'};
+      const signupEmail = parsed.data.email;
       if (!features.email) {
-        const service = serviceDb();
-        if (!service) return {ok:false,message:'O cadastro está indisponível neste ambiente.'};
-        const requestHeaders = await headers();
-        const ip = requestHeaders.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
-        const key = createHmac('sha256', process.env.SUPABASE_SERVICE_ROLE_KEY!).update(ip).digest('hex');
-        const quota = await service.rpc('consume_signup_quota', { p_key: key });
-        if (quota.error || !quota.data) return {ok:false,message:'O limite de cadastros foi atingido. Tente novamente mais tarde.'};
         // This mode deliberately skips email delivery. Only the server can
         // create a confirmed account; no staff role is granted by registration.
-        const created = await service.auth.admin.createUser({email,password,email_confirm:true});
+        const created = await service.auth.admin.createUser({email:signupEmail,password,email_confirm:true,user_metadata:{registration_ticket:ticket}});
         if (created.error) return {ok:false,message:'Não foi possível concluir o cadastro. Se já possui uma conta, entre com sua senha.'};
-        const signedIn = await client.auth.signInWithPassword({email,password});
+        const signedIn = await client.auth.signInWithPassword({email:signupEmail,password});
         return signedIn.error
           ? {ok:true,message:'Conta criada. Entre com seu e-mail e senha.',redirect:'/entrar'}
           : {ok:true,message:'Conta criada.',redirect:'/candidato'};
       }
-      const {error}=await client.auth.signUp({email,password,options:{emailRedirectTo:`${config.url}/auth/callback`}});
+      const {data,error}=await client.auth.signUp({email:signupEmail,password,options:{data:{registration_ticket:ticket},emailRedirectTo:`${config.url}/auth/callback`}});
       if(error) return {ok:false,message:'Não foi possível concluir o cadastro. Confira os dados ou tente recuperar sua senha.'};
+      if(data.session) {
+        await client.auth.signOut();
+        log('auth.signup_confirmation_disabled', {code:'configuration_error'});
+        return {ok:false,message:'A confirmação de e-mail está indisponível. Avise o administrador para revisar a configuração.'};
+      }
       return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere sua senha.'};
     }
     const {data:login,error}=await client.auth.signInWithPassword({email,password});
@@ -73,13 +92,11 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     }
     const {data:staff}=await client.rpc('is_staff');
     if (staff) {
-      const [{data:account},{data:roles},{data:assurance}] = await Promise.all([
+      const [{data:account},{data:assurance}] = await Promise.all([
         client.from('staff').select('mfa_enabled').eq('user_id',login.user!.id).single(),
-        client.from('staff_roles').select('roles(active,require_mfa)').eq('user_id',login.user!.id),
         client.auth.mfa.getAuthenticatorAssuranceLevel(),
       ]);
-      const assignedRoles = z.array(z.object({roles:z.object({active:z.boolean(),require_mfa:z.boolean()}).nullable()})).safeParse(roles);
-      const requiresMfa = !assignedRoles.success || !account || (account.mfa_enabled && assignedRoles.data.some(r=>r.roles?.active && r.roles.require_mfa));
+      const requiresMfa = !account || account.mfa_enabled;
       if (requiresMfa && assurance?.currentLevel !== 'aal2') return {ok:true,message:'Confirme o acesso com seu aplicativo autenticador.',redirect:'/seguranca'};
     }
     return {ok:true,message:'Acesso confirmado.',redirect:staff?'/rh':'/candidato'};

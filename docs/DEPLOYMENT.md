@@ -1,5 +1,7 @@
 # Publicar a demonstração: Vercel + Supabase
 
+**Envio pela Microsoft:** a aplicação também aceita `EMAIL_PROVIDER=microsoft_graph`, com OAuth e Auth Hook assinado. Siga [Microsoft Graph: configuração e ativação](MICROSOFT_GRAPH_EMAIL.md). As instruções SMTP abaixo continuam válidas quando o provedor escolhido for `smtp`; com Graph use `MS_GRAPH_*` e `SUPABASE_SEND_EMAIL_HOOK_SECRET`, sem `SMTP_*`. A ativação depende de autorizar a caixa no Exchange, aplicar a migration dos recibos, configurar o hook e fazer redeploy. O registro Microsoft de envio é distinto do provedor Azure usado para login.
+
 Este roteiro mantém **dois bancos independentes**. `npm run local:start` usa o Supabase CLI/Docker e os dados fictícios do computador. A Vercel usa um projeto Supabase hospedado novo, identificado por `https://<project-ref>.supabase.co`. Nenhuma etapa abaixo copia o banco, as senhas ou o `.env` local para a nuvem.
 
 **Primeira versão sem serviços de e-mail e Turnstile.** Use `APP_ENV=demo`, `ENABLE_EMAIL=false` e `ENABLE_TURNSTILE=false`. No modo `demo`, as duas flags também assumem `false` quando ausentes. Não é necessário cadastrar `SMTP_*` ou `TURNSTILE_*` na Vercel enquanto os serviços estiverem desativados. O cadastro cria uma conta confirmada no servidor sem enviar mensagens, com honeypot e quota de cinco tentativas por origem/hora e cem tentativas globais/hora. Recuperação de senha por e-mail, códigos de e-mail e alteração do endereço de login ficam indisponíveis. A troca da senha exige o aplicativo autenticador. O `.env` e o `.env.local` continuam exclusivos do Docker local; **não os envie nem os importe na Vercel**.
@@ -99,12 +101,16 @@ Se houver um `.env.vercel.local` privado preparado no computador, ele pode ser i
 | `ENABLE_EMAIL` | `false` nesta versão | Servidor |
 | `TURNSTILE_SITE_KEY` | Somente quando Turnstile ativo: site key do widget | Chave pública renderizada no formulário |
 | `TURNSTILE_SECRET_KEY` | Somente quando Turnstile ativo: secret key | Segredo apenas servidor |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Somente quando e-mail ativo: endereço, porta e TLS | Servidor |
-| `SMTP_USER` / `SMTP_PASSWORD` | Somente quando e-mail ativo: credenciais SMTP | Segredos apenas servidor |
-| `SMTP_FROM` | Somente quando e-mail ativo: remetente verificado | Servidor |
+| `EMAIL_PROVIDER` | `smtp` (padrão/local) ou `microsoft_graph` | Servidor |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Somente quando e-mail ativo com SMTP: endereço, porta e TLS | Servidor |
+| `SMTP_USER` / `SMTP_PASSWORD` | Somente quando e-mail ativo com SMTP: credenciais SMTP | Segredos apenas servidor |
+| `SMTP_FROM` | Somente quando e-mail ativo com SMTP: remetente verificado | Servidor |
+| `MS_GRAPH_TENANT_ID` / `MS_GRAPH_CLIENT_ID` | Somente com Graph ativo: IDs do registro de envio | Servidor |
+| `MS_GRAPH_CLIENT_SECRET` / `MS_GRAPH_SENDER` | Somente com Graph ativo: valor do segredo e caixa autorizada | Segredo apenas servidor / remetente no servidor |
+| `SUPABASE_SEND_EMAIL_HOOK_SECRET` | Somente com Graph ativo: segredo de assinatura do Auth Hook | Segredo apenas servidor |
 | `ENABLE_LEGACY_STORAGE_UPLOADS` | `false` | Servidor |
 
-O build recusa variáveis obrigatórias ausentes, URLs locais, flags inválidas e upload legado ativado. SMTP e Turnstile só são obrigatórios com suas respectivas flags ativas. **Não configure** `DATABASE_URL`, `AZURE_CLIENT_ID`, `AZURE_SECRET`, `CLAMAV_HOST`, `SIGNED_URL_TTL_SECONDS` ou `NEXT_PUBLIC_SUPABASE_*` na Vercel para o fluxo atual. `DATABASE_URL` é usado apenas pelo worker histórico local. O cliente de autenticação da aplicação roda no servidor e recebe a chave publishable por `SUPABASE_ANON_KEY`. As chaves Microsoft pertencem à configuração do provedor Azure no Supabase, não ao Next.js.
+O build recusa variáveis obrigatórias ausentes, URLs locais, flags inválidas e upload legado ativado. As variáveis de envio dependem de `EMAIL_PROVIDER` e só são obrigatórias com e-mail ativo; Turnstile depende de sua flag. **Não configure** `DATABASE_URL`, `AZURE_CLIENT_ID`, `AZURE_SECRET`, `CLAMAV_HOST`, `SIGNED_URL_TTL_SECONDS` ou `NEXT_PUBLIC_SUPABASE_*` na Vercel para o fluxo atual. `DATABASE_URL` é usado apenas pelo worker histórico local. O cliente de autenticação recebe a chave publishable por `SUPABASE_ANON_KEY`. As credenciais Azure de login pertencem ao Supabase; as novas credenciais `MS_GRAPH_*` de envio pertencem ao servidor Next.js.
 
 Evite associar o **mesmo projeto Supabase de Production** às Preview Deployments: elas usam outra URL e poderiam misturar dados. Deixe Preview sem estas variáveis, com build bloqueado, até haver um projeto Supabase de staging, Turnstile e URLs próprios. Depois de salvar variáveis, acione **Deploy/Redeploy**; mudanças de ambiente não alteram deployments já criados.
 
@@ -160,3 +166,5 @@ Depois de corrigir as variáveis, faça **Redeploy** e abra o domínio estável 
 Use `npm run local:start` para manter o site em `http://localhost:3000` com banco e Mailpit locais. Depois da primeira configuração, `docker compose up -d --build` recompila só a aplicação local. `npm run db:stop` para o Supabase local sem apagar seus dados; `db:reset` **apaga** apenas o banco local. Não rode `vercel env pull` nem coloque credenciais hospedadas em `.env` ou `.env.local` deste checkout. `npx supabase link` grava o vínculo remoto sob `supabase/.temp/` (ignorado); antes de `db push`, confirme o Project ref indicado pelo CLI.
 
 Esta publicação é uma **demonstração técnica**, não liberação para currículos reais. O fluxo de Conta exige segundo fator dentro da aplicação, mas chamadas diretas a `Supabase Auth.updateUser` ainda podem contornar essa tela; veja [Segurança](SECURITY.md). Também faltam validação jurídica de aviso, base e retenção, verificação de acessibilidade/carga e operação de backup/alertas. `APP_ENV=demo` exibe o aviso de dados fictícios e impede indexação; a configuração `production` só deve ser usada depois dessas correções e verificações.
+
+Para cadastro público com CPF/data de nascimento e administração exclusiva da equipe, siga também `REGISTRATION_AND_STAFF_ADMIN.md`. Aplique a migration `202610060001_registration_and_staff_admin.sql` e ative o hook PostgreSQL `public.guard_candidate_signup` junto à publicação do novo formulário.
