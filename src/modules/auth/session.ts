@@ -6,8 +6,9 @@ export const session = cache(async () => {
   const client = await db();
   const { data: { user } } = await client.auth.getUser();
   if (!user) redirect('/entrar');
-  const access = await client.rpc('portal_session_allowed');
-  if (access.error || !access.data) redirect('/conta-indisponivel');
+  const access = await client.rpc('candidate_registration_status');
+  if(!access.error&&access.data==='required')redirect('/completar-cadastro');
+  if (access.error || access.data!=='complete') redirect('/conta-indisponivel');
   return { client, user };
 });
 export const requireStaff = cache(async () => {

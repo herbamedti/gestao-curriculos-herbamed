@@ -28,6 +28,8 @@ describe('build hospedado com Graph', () => {
     expect(run({ MS_GRAPH_SENDER: 'Herbamed <carreiras@example.test>' }).status).toBe(1);
     expect(run({ APP_URL: 'http://localhost:3000' }).status).toBe(1);
     expect(run({ EMAIL_PROVIDER: 'outro' }).status).toBe(1);
+    expect(run({ ENABLE_GOOGLE_LOGIN: 'sim' }).status).toBe(1);
+    expect(run({ ENABLE_GOOGLE_LOGIN: 'true' }).status).toBe(0);
   });
   it('mantém as exigências SMTP apenas quando o provedor é SMTP', () => {
     expect(run({ EMAIL_PROVIDER: 'smtp' }).status).toBe(1);

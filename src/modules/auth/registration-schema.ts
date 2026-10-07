@@ -24,3 +24,4 @@ export const registrationSchema = z.object({
   cpf: z.string().trim().max(14).refine(validCpf, 'Informe um CPF válido.').transform(value => value.replace(/\D/g, '')),
   birth_date: z.string().refine(value => validBirthDate(value), 'Informe uma data de nascimento válida, que não esteja no futuro.'),
 });
+export const candidateIdentificationSchema = registrationSchema.pick({cpf:true,birth_date:true});

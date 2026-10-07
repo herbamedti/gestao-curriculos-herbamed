@@ -1,5 +1,7 @@
 # Publicar a demonstração: Vercel + Supabase
 
+**Login Google para candidatos:** siga [configuração Google e cadastro obrigatório](GOOGLE_CANDIDATE_LOGIN.md). Aplique a migration `202610070003_google_candidate_login.sql` antes do novo código e habilite `ENABLE_GOOGLE_LOGIN=true` na Vercel depois de configurar as callbacks. O botão fica desligado quando a flag está ausente; CPF e nascimento continuam obrigatórios no banco.
+
 **Envio pela Microsoft:** a aplicação também aceita `EMAIL_PROVIDER=microsoft_graph`, com OAuth e Auth Hook assinado. Siga [Microsoft Graph: configuração e ativação](MICROSOFT_GRAPH_EMAIL.md). As instruções SMTP abaixo continuam válidas quando o provedor escolhido for `smtp`; com Graph use `MS_GRAPH_*` e `SUPABASE_SEND_EMAIL_HOOK_SECRET`, sem `SMTP_*`. A ativação depende de autorizar a caixa no Exchange, aplicar a migration dos recibos, configurar o hook e fazer redeploy. O registro Microsoft de envio é distinto do provedor Azure usado para login.
 
 Este roteiro mantém **dois bancos independentes**. `npm run local:start` usa o Supabase CLI/Docker e os dados fictícios do computador. A Vercel usa um projeto Supabase hospedado novo, identificado por `https://<project-ref>.supabase.co`. Nenhuma etapa abaixo copia o banco, as senhas ou o `.env` local para a nuvem.

@@ -14,7 +14,7 @@ if (hosted) {
   if (email && provider === 'microsoft_graph') required.push('MS_GRAPH_TENANT_ID', 'MS_GRAPH_CLIENT_ID',
     'MS_GRAPH_CLIENT_SECRET', 'MS_GRAPH_SENDER', 'SUPABASE_SEND_EMAIL_HOOK_SECRET');
   const errors = required.filter(key => !process.env[key]?.trim()).map(key => `${key} ausente`);
-  for (const key of ['ENABLE_TURNSTILE', 'ENABLE_EMAIL']) {
+  for (const key of ['ENABLE_TURNSTILE', 'ENABLE_EMAIL', 'ENABLE_GOOGLE_LOGIN']) {
     if (process.env[key] !== undefined && !['true', 'false'].includes(process.env[key])) errors.push(`${key} deve ser true ou false`);
   }
   if (!['demo', 'production'].includes(process.env.APP_ENV)) errors.push('APP_ENV deve ser demo ou production');

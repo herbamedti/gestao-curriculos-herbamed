@@ -9,7 +9,8 @@ import { serviceDb } from '@/lib/service-db';
 import { log } from '@/lib/logger';
 import { loginDiagnostic, loginFailure } from './login-error';
 import type { ActionResult } from '@/lib/result';
-import { registrationSchema } from './registration-schema';
+import { registrationSchema, candidateIdentificationSchema } from './registration-schema';
+import { safeError } from '@/lib/result';
 import { signupQuotaKeys } from './signup-origin';
 const credentials = z.object({ email: z.string().trim().toLowerCase().pipe(z.email().max(254)), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
@@ -90,8 +91,9 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       log('auth.login_failed', { code: loginDiagnostic(error, failure.code) });
       return {ok:false,message:failure.message};
     }
-    const access = await client.rpc('portal_session_allowed');
-    if (access.error || !access.data) {
+    const access = await client.rpc('candidate_registration_status');
+    if(!access.error&&access.data==='required')return {ok:true,message:'Complete os dados obrigatórios do cadastro.',redirect:'/completar-cadastro'};
+    if (access.error || access.data!=='complete') {
       await client.auth.signOut();
       return {ok:false,message:'O acesso desta conta está indisponível. Procure a equipe de RH para solicitar uma revisão.'};
     }
@@ -110,6 +112,46 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     log('auth.request_failed', { code: 'unexpected_error' });
     return {ok:false,message:'Não foi possível conectar ao serviço de autenticação. Tente novamente ou procure o administrador.'};
   }
+}
+export async function google(_:ActionResult,form:FormData):Promise<ActionResult> {
+  if(!isConfigured()||!features.google)return {ok:false,message:'O login Google está indisponível neste ambiente.'};
+  let url:string;
+  try {
+    if(!await verifyBot(form))return {ok:false,message:'Conclua a verificação de segurança e tente novamente.'};
+    const service=serviceDb();
+    if(!service)return {ok:false,message:'O login Google está indisponível neste ambiente.'};
+    const keys=signupQuotaKeys(await headers(),process.env.SUPABASE_SERVICE_ROLE_KEY!,'google-oauth',process.env.VERCEL==='1');
+    const quota=await service.rpc('consume_google_oauth_quota',{p_origin_key:keys.origin});
+    if(quota.error||!quota.data)return {ok:false,message:'Muitas tentativas de acesso. Aguarde antes de tentar novamente.'};
+    const client=await db();
+    const result=await client.auth.signInWithOAuth({provider:'google',options:{scopes:'openid email profile',redirectTo:`${config.url}/auth/callback?provider=google`,queryParams:{prompt:'select_account'}}});
+    if(result.error||!result.data.url)return {ok:false,message:'Não foi possível iniciar o login Google. Confira a configuração do provedor no Supabase.'};
+    url=result.data.url;
+  } catch {
+    log('auth.google_start_failed',{code:'oauth_unavailable'});
+    return {ok:false,message:'Não foi possível iniciar o login Google. Tente novamente mais tarde.'};
+  }
+  redirect(url);
+}
+
+export async function completeGoogleRegistration(_:ActionResult,form:FormData):Promise<ActionResult> {
+  const client=await db();
+  const {data:{user}}=await client.auth.getUser();
+  if(!user)redirect('/entrar');
+  try {
+    if(!await verifyBot(form))return {ok:false,message:'Conclua a verificação de segurança e tente novamente.'};
+    const parsed=candidateIdentificationSchema.safeParse(Object.fromEntries(form));
+    if(!parsed.success)return {ok:false,message:parsed.error.issues[0].message};
+    const result=await client.rpc('complete_google_registration',{p_cpf:parsed.data.cpf,p_birth_date:parsed.data.birth_date});
+    if(result.error)return safeError(result.error.code,result.error.message);
+    const data=z.object({ok:z.literal(true).optional(),error:z.string().optional()}).parse(result.data);
+    if(data.error)return safeError(undefined,data.error);
+    if(!data.ok)return safeError();
+  } catch {
+    log('auth.google_completion_failed',{code:'invalid_request'});
+    return {ok:false,message:'Não foi possível concluir o cadastro. Confira os dados e tente novamente.'};
+  }
+  redirect('/candidato');
 }
 export async function microsoft() {
   if(!isConfigured()) redirect('/entrar?erro=configuracao');

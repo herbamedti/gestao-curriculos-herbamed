@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { initialResult, type ActionResult } from '@/lib/result';
 export function ActionForm({ action, children, submit = 'Salvar alterações', className = '', confirm }: {
   action: (state: ActionResult, form: FormData) => Promise<ActionResult>;
-  children: React.ReactNode; submit?: string; className?: string; confirm?: string;
+  children: React.ReactNode; submit?: React.ReactNode; className?: string; confirm?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialResult);
   const [draftError, setDraftError] = useState('');

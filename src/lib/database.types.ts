@@ -1285,8 +1285,14 @@ export type Database = {
         Returns: boolean;
       };
       can_candidate: { Args: { p_candidate_id: string; p_permission: string }; Returns: boolean };
+      candidate_registration_status: { Args: Record<PropertyKey, never>; Returns: string };
       claim_email_delivery: { Args: { p_key: string }; Returns: Json };
+      complete_google_registration: {
+        Args: { p_birth_date: string; p_cpf: string };
+        Returns: Json;
+      };
       consume_account_email_code: { Args: { p_code: string }; Returns: boolean };
+      consume_google_oauth_quota: { Args: { p_origin_key: string }; Returns: boolean };
       consume_signup_quota: { Args: { p_key: string }; Returns: boolean };
       create_manual_candidate: { Args: { p_data: Json }; Returns: string };
       curriculum_missing: { Args: { p_candidate_id: string }; Returns: string[] };

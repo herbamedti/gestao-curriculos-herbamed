@@ -35,6 +35,7 @@ export function safeError(code?: string, message?: string): ActionResult {
     cannot_change_self: 'A alteração do seu próprio acesso exige outro administrador.',
     cannot_change_own_role: 'Seu próprio perfil deve ser alterado por outro administrador.',
     rate_limit: 'Limite de tentativas atingido. Tente novamente mais tarde.',
+    invalid_registration: 'Informe um CPF válido e uma data de nascimento válida, que não esteja no futuro.',
   };
   if (code === '23505') return { ok: false, message: 'Já existe um registro com estes dados. Nenhuma duplicação foi criada.' };
   if (code === '42501') return { ok: false, message: 'Seu acesso não permite esta operação.' };

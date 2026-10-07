@@ -91,6 +91,15 @@
 .policy-body ul, .policy-body ol { padding-left: 26px; margin: 16px 0; }
 .policy-body li { margin: 8px 0; }
 .policy-body hr { border: 0; border-top: 1px solid var(--border); margin: 28px 0; }
+.google-login { margin: 28px 0; }
+@font-face { font-family: "Google Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/google-sans-medium-latin.woff2") format("woff2"); }
+.google-login-form > .button { width: 100%; justify-content: center; gap: 10px; padding: 12px; background: #fff; border: 1px solid #747775; color: #1f1f1f; font: 500 14px/20px "Google Sans", Arial, sans-serif; }
+.google-login-form > .button:hover { background: #f7f8f8; }
+.google-login-form > .button img { flex-shrink: 0; }
+.google-login > p { font-size: 12px; margin: 12px 0; }
+.google-registration { display: flex; flex-direction: column; gap: 24px; }
+.google-registration > p { margin: 0; overflow-wrap: anywhere; }
+.google-registration .form { gap: 24px; }
 .application-card { display: flex; flex-direction: column; gap: 20px; padding: 28px; margin-bottom: 24px; }
 .application-card > h2, .application-card > p, .application-card > ul, .application-card > .alert { margin: 0; }
 .application-card > .text-link, .application-card > .button { align-self: flex-start; }

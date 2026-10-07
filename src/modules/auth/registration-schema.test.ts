@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { registrationSchema, validBirthDate, validCpf } from './registration-schema';
+import { registrationSchema, candidateIdentificationSchema, validBirthDate, validCpf } from './registration-schema';
 import { signupQuotaKeys } from './signup-origin';
 
 describe('Cadastro público', () => {
+  it('exige identificação no cadastro Google sem exigir senha ou confiar no e-mail do formulário', () => {
+    const identification={cpf:'529.982.247-25',birth_date:'1995-06-15'};
+    expect(candidateIdentificationSchema.parse({...identification,email:'forged@example.test',user_id:'other'})).toEqual({cpf:'52998224725',birth_date:'1995-06-15'});
+    for(const value of [{}, {...identification,cpf:'52998224724'}, {...identification,birth_date:'2099-01-01'}])expect(candidateIdentificationSchema.safeParse(value).success).toBe(false);
+  });
   it('valida ambos os dígitos do CPF e rejeita repetições ou conteúdo adicional', () => {
     expect(validCpf('52998224725')).toBe(true);
     expect(validCpf('529.982.247-25')).toBe(true);

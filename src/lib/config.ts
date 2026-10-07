@@ -8,6 +8,7 @@ export const config = {
 const featureFlag = (value: string | undefined, fallback: boolean) =>
   value === undefined ? fallback : z.enum(['true', 'false']).parse(value) === 'true';
 export const features = {
+  google: featureFlag(process.env.ENABLE_GOOGLE_LOGIN, false),
   turnstile: featureFlag(process.env.ENABLE_TURNSTILE, !['local', 'demo'].includes(config.environment)),
   email: featureFlag(process.env.ENABLE_EMAIL, config.environment !== 'demo'),
 };
