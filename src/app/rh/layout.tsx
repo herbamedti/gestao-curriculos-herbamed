@@ -8,6 +8,7 @@ export default async function AdminLayout({children}:{children:React.ReactNode})
   const allowed=checks.map(item=>({item,yes:permissions?.includes(item[0])===true}));
   const groups:NavGroup[]=[];
   for(const {item,yes} of allowed)if(yes){let group=groups.find(g=>g.label===item[4]);if(!group){group={label:item[4],items:[]};groups.push(group);}group.items.push({href:item[1],label:item[2],icon:item[3]});}
+  if(permissions?.includes('users.manage'))groups.find(group=>group.label==='ADMINISTRAÇÃO')?.items.push({href:'/rh/contas-candidatos',label:'Contas de candidatos',icon:'manage_accounts'});
   groups.push({label:'CONFIGURAÇÕES',items:[{href:'/rh/conta',label:'Conta',icon:'manage_accounts'}]});
   const {data:staff}=await client.from('staff').select('display_name').eq('user_id',user.id).maybeSingle();
   return <WorkspaceShell staff name={staff?.display_name||user.email||'Equipe Herbamed'} groups={groups}>{children}</WorkspaceShell>;

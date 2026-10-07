@@ -4,6 +4,10 @@ Os cadastros do RH e do candidato compartilham os mesmos campos de currículo. A
 
 ## Currículo
 
+A etapa Revisar e exportar apresenta o currículo como um documento profissional: nome e título em destaque, contatos formatados, resumo, seções separadas de experiência, formação, cursos, certificações e idiomas, habilidades, competências pessoais e informações complementares. Instituição, período e detalhes com marcadores têm hierarquia própria; somente dados preenchidos aparecem. O aviso de prontidão fica ao lado, com espaçamento entre a mensagem e as ações, e abaixo do documento em telas menores.
+
+A revisão e a exportação compartilham o mesmo modelo de conteúdo. O PDF do candidato e do gestor usa A4, margens, títulos de seção, datas alinhadas, marcadores com recuo, identificação nas páginas seguintes e numeração. Se um registro continuar em outra página, a seção e o título indicam a continuação. CPF, nascimento e registros internos de tratamento de dados não compõem o currículo profissional. Este ajuste visual não exige migration nem alteração de variáveis de ambiente.
+
 As descrições de Experiência Profissional, Histórico Acadêmico, Cursos, Certificados e Idiomas usam listas editáveis. É possível adicionar um detalhe por vez ou vários separados por `;`, editar e remover cada item. A revisão e o PDF exibem marcadores, com recuo nas linhas continuadas. Idioma, nível e demais campos continuam separados; a lista de detalhes é opcional. A coluna `profile_entries.description` continua sendo texto com um item por linha; conteúdo legado com ponto e vírgula é preservado ao abrir a edição. Este ajuste não exige migration nem variável nova.
 
 Além dos dados existentes, o cadastro permite telefone alternativo, bairro, habilitação, um segundo link profissional (GitHub, portfólio ou site), disponibilidade para viagens e mudança de cidade. Os campos são opcionais e gravados em `candidates.additional_info` por RPC autorizado. Não foram adicionados idade, estado civil ou documentos de identificação como requisitos de candidatura.

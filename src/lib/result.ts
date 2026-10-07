@@ -2,6 +2,8 @@ export type ActionResult = { ok: boolean; message: string; redirect?: string };
 export const initialResult: ActionResult = { ok: false, message: '' };
 export function safeError(code?: string, message?: string): ActionResult {
   const known: Record<string, string> = {
+    account_reason_required: 'Informe um motivo entre 3 e 1.000 caracteres.',
+    invalid_portal_account: 'Esta conta não pode ser administrada pela tela de candidatos.',
     job_process_changed: 'As etapas foram alteradas por outra pessoa. Recarregue a página antes de salvar novamente.',
     stage_in_use: 'Uma etapa removida ou com situação final alterada já possui candidaturas ou histórico. Mantenha essa etapa; você pode renomeá-la ou mudar sua ordem.',
     initial_stage_final: 'A primeira etapa recebe inscrições e não pode ser final.',
@@ -25,6 +27,8 @@ export function safeError(code?: string, message?: string): ActionResult {
     complete_profile: 'Complete seu currículo antes de continuar.',
     answer_required: 'Responda todas as perguntas obrigatórias.',
     invalid_policy: 'O aviso de privacidade foi atualizado. Recarregue a página e revise a nova versão.',
+    invalid_policy_content: 'Confira a versão (2 a 40 caracteres), o título (5 a 160) e o texto integral (100 a 100.000). O aviso anterior foi preservado.',
+    policy_version_exists: 'Esta versão já foi publicada. Informe uma nova versão; o histórico não pode ser sobrescrito.',
     application_changed: 'Esta candidatura foi alterada. Atualize a página antes de tentar novamente.',
     too_many_interests: 'O limite de áreas de interesse foi excedido.',
     user_must_sign_in_first: 'A pessoa precisa entrar com Microsoft uma vez antes de receber um perfil.',

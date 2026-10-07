@@ -32,3 +32,86 @@
 .items-start { align-items: start; }
 .managed-user details { margin-top: 16px; }
 .managed-user details[open] > summary { margin-bottom: 16px; }
+
+/* A document-like preview, shared in structure with the exported A4 curriculum. */
+.cv-review-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 310px); gap: 28px; align-items: start; }
+.cv-review-main { min-width: 0; }
+.cv-review-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.cv-review-toolbar h2 { font-size: 20px; letter-spacing: -.4px; margin: 0; }
+.cv-paper { min-width: 0; padding: 44px 48px; border: 1px solid var(--border); border-top: 4px solid var(--primary); border-radius: var(--radius-medium); background: var(--surface); box-shadow: var(--elevation-1); overflow-wrap: anywhere; line-height: 1.65; }
+.cv-header { padding-bottom: 24px; border-bottom: 2px solid var(--primary); }
+.cv-name { margin: 0 0 8px; font-size: 30px; font-weight: 700; letter-spacing: -.8px; line-height: 1.2; }
+.cv-headline { margin: 0 0 12px; font-size: 17px; font-weight: 500; color: var(--primary-text); line-height: 1.4; }
+.cv-location { margin: 0 0 6px; color: var(--text-secondary); font-size: 13px; }
+.cv-contacts { padding: 0; margin: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 13px; color: var(--text-secondary); }
+.cv-links { padding: 0; margin: 8px 0 0; list-style: none; color: var(--text-secondary); font-size: 12px; }
+.cv-links li + li { margin-top: 4px; }
+.cv-links a { color: var(--primary-text); text-decoration: underline; text-underline-offset: 3px; }
+.cv-section { margin-top: 28px; }
+.cv-section > h3 { padding-bottom: 9px; margin: 0 0 16px; border-bottom: 1px solid var(--border); color: var(--primary-text); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.cv-summary { white-space: pre-wrap; margin: 0; }
+.cv-entries { display: grid; gap: 24px; }
+.cv-entry-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap; }
+.cv-entry-heading h4 { flex: 1 1 220px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.45; }
+.cv-period { flex: 0 1 auto; margin: 0; font-size: 12px; color: var(--text-secondary); }
+.cv-organization { margin: 5px 0 0; font-weight: 500; }
+.cv-metadata { margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
+.cv-bullets { margin: 12px 0 0; padding-left: 20px; }
+.cv-bullets li + li { margin-top: 7px; }
+.cv-bullets li::marker { color: var(--primary-text); }
+.cv-skills { padding: 0; margin: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.cv-skills li { padding: 4px 10px; border: 1px solid var(--border-soft); border-radius: var(--radius-small); background: var(--surface-container); font-size: 12px; }
+.cv-information { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 13px; }
+.cv-information li + li { margin-top: 5px; }
+.cv-readiness { display: flex; flex-direction: column; gap: 20px; }
+.cv-readiness h2, .cv-readiness .alert, .cv-readiness p, .cv-readiness ul { margin: 0; }
+.cv-readiness ul { padding-left: 20px; margin-top: 12px; }
+.cv-readiness li + li { margin-top: 10px; }
+.cv-readiness .actions { gap: 12px; }
+.application-page > .text-link { margin-bottom: 20px; }
+.privacy-policy-card { display: flex; flex-direction: column; gap: 18px; min-width: 0; scroll-margin-top: 24px; }
+.privacy-policy-card > h2, .privacy-policy-card > p { margin: 0; }
+.policy-editor { gap: 24px; }
+.policy-editor textarea { min-height: 340px; resize: vertical; line-height: 1.7; }
+.policy-editor-help { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.policy-editor-help p { margin: 0; font-size: 12px; }
+.policy-editor-help p:first-child { max-width: 65ch; }
+.policy-limit-error { color: var(--error); }
+.policy-editor .check { align-items: flex-start; line-height: 1.7; }
+.policy-editor .check input { margin-top: 2px; }
+.policy-history { list-style: none; padding: 0; margin: 0; }
+.policy-history li { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.policy-history li > div { flex: 1; min-width: 180px; }
+.policy-history li p { margin: 6px 0 0; }
+.policy-history-preview summary { cursor: pointer; color: var(--primary); }
+.policy-history-preview .policy-body { margin-top: 24px; }
+.policy-body { line-height: 1.8; overflow-wrap: anywhere; }
+.policy-body p { white-space: pre-wrap; margin: 16px 0; }
+.policy-body h3, .policy-body h4 { margin: 28px 0 14px; line-height: 1.4; }
+.policy-body ul, .policy-body ol { padding-left: 26px; margin: 16px 0; }
+.policy-body li { margin: 8px 0; }
+.policy-body hr { border: 0; border-top: 1px solid var(--border); margin: 28px 0; }
+.application-card { display: flex; flex-direction: column; gap: 20px; padding: 28px; margin-bottom: 24px; }
+.application-card > h2, .application-card > p, .application-card > ul, .application-card > .alert { margin: 0; }
+.application-card > .text-link, .application-card > .button { align-self: flex-start; }
+.application-form { gap: 24px; }
+.application-form .check, .talent-preference .check { align-items: flex-start; line-height: 1.7; }
+.application-form .check input, .talent-preference .check input { margin-top: 2px; }
+.talent-preference { display: flex; flex-direction: column; gap: 16px; }
+.talent-preference h3, .talent-preference p { margin: 0; }
+.cv-readiness > .talent-preference { padding-top: 20px; border-top: 1px solid var(--border); }
+.talent-pool-note { margin-bottom: 24px; }
+.talent-pool-note .text-link { margin-left: 8px; }
+.portal-accounts { display: grid; gap: 24px; }
+.portal-account { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.portal-account .card-header { align-items: flex-start; }
+.portal-account .card-header h2 { margin-bottom: 6px; }
+.portal-account .card-header p { margin: 0; }
+.portal-account-info { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; margin: 24px 0; }
+.portal-account-info dt { font-size: 12px; color: var(--text-secondary); }
+.portal-account-info dd { margin: 6px 0 0; font-size: 13px; }
+.portal-account details { margin-top: 16px; }
+.portal-account details .form { padding-top: 20px; }
+@media (max-width: 760px) { .application-card { padding: 22px; } .portal-account .card-header { flex-direction: column; } .portal-account-info { grid-template-columns: repeat(2,minmax(0,1fr)); } .portal-account-filters { flex-direction: column; align-items: stretch; } .talent-pool-note .text-link { margin: 10px 0 0; display: flex; } }
+@media (max-width: 1150px) { .cv-review-layout { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .cv-paper { padding: 28px 22px; } .cv-name { font-size: 26px; } .cv-headline { font-size: 15px; } .cv-review-toolbar { align-items: flex-start; flex-direction: column; } .cv-entry-heading { display: block; } .cv-period { margin-top: 5px; } }

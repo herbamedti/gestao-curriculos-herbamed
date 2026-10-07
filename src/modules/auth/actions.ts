@@ -82,13 +82,18 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
         log('auth.signup_confirmation_disabled', {code:'configuration_error'});
         return {ok:false,message:'A confirmação de e-mail está indisponível. Avise o administrador para revisar a configuração.'};
       }
-      return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere sua senha.'};
+      return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere a sua senha.',redirect:'/entrar?cadastro=confirmar-email'};
     }
     const {data:login,error}=await client.auth.signInWithPassword({email,password});
     if(error) {
       const failure = loginFailure(error, features.email);
       log('auth.login_failed', { code: loginDiagnostic(error, failure.code) });
       return {ok:false,message:failure.message};
+    }
+    const access = await client.rpc('portal_session_allowed');
+    if (access.error || !access.data) {
+      await client.auth.signOut();
+      return {ok:false,message:'O acesso desta conta está indisponível. Procure a equipe de RH para solicitar uma revisão.'};
     }
     const {data:staff}=await client.rpc('is_staff');
     if (staff) {

@@ -1336,6 +1336,22 @@ export type Database = {
           user_id: string;
         }[];
       };
+      list_portal_accounts: {
+        Args: { p_active?: boolean; p_page?: number; p_search?: string };
+        Returns: {
+          active: boolean;
+          candidate_id: string;
+          confirmed_at: string;
+          created_at: string;
+          display_name: string;
+          email: string;
+          last_sign_in_at: string;
+          reason: string;
+          talent_pool: boolean;
+          total_count: number;
+          user_id: string;
+        }[];
+      };
       manage_candidate_curriculum: {
         Args: { p_candidate_id: string; p_data: Json };
         Returns: undefined;
@@ -1372,6 +1388,7 @@ export type Database = {
       owns_application: { Args: { p_application_id: string }; Returns: boolean };
       owns_candidate: { Args: { p_candidate_id: string }; Returns: boolean };
       owns_job_application: { Args: { p_job_id: string }; Returns: boolean };
+      portal_session_allowed: { Args: Record<PropertyKey, never>; Returns: boolean };
       prepare_candidate_signup: {
         Args: {
           p_birth_date: string;
@@ -1460,6 +1477,10 @@ export type Database = {
       };
       set_account_mfa: { Args: { p_email_code?: string; p_enabled: boolean }; Returns: boolean };
       set_job_status: { Args: { p_job_id: string; p_status: string }; Returns: undefined };
+      set_portal_account_access: {
+        Args: { p_active: boolean; p_reason: string; p_user_id: string };
+        Returns: undefined;
+      };
       staff_navigation_permissions: { Args: Record<PropertyKey, never>; Returns: string[] };
       submit_application: {
         Args: { p_answers: Json; p_job_id: string; p_policy_id: string };

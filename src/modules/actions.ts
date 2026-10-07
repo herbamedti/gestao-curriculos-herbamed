@@ -1,16 +1,19 @@
 'use server';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { session } from '@/modules/auth/session';
 import { safeError, type ActionResult } from '@/lib/result';
 import { log } from '@/lib/logger';
 import { candidateDetailsSchema, entrySchema, initialEntriesSchema } from '@/modules/candidates/details';
 import { questionSchema, stageSchema, stagesSchema } from '@/modules/jobs/process-schema';
+import { policySchema } from '@/modules/privacy/policy-schema';
 const uuid=z.uuid();
 const text=z.string().trim().min(1).max(10000);
 const optional=z.string().max(10000);
 export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult> {
   const {client}=await session();
+  let publishedPolicyRedirect:string|undefined;
   const get=(key:string)=>form.get(key)??'';
   const id=(key:string)=>uuid.parse(get(key));
   const str=(key:string)=>text.parse(get(key));
@@ -54,11 +57,15 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
       case 'privacy-consent': result=await client.rpc('save_privacy',{p_policy_id:id('policy_id'),p_talent_pool:flag('talent_pool')});break;
       case 'privacy-policy': {
         if(!flag('approved'))return {ok:false,message:'Confirme a aprovação do aviso antes de publicá-lo.'};
+        const parsed=policySchema.safeParse({version:get('version'),title:get('title'),body:get('body')});
+        if(!parsed.success)return {ok:false,message:parsed.error.issues[0].message};
         result=await client.rpc('publish_privacy_policy',{
-          p_version:z.string().trim().min(2).max(40).parse(get('version')),
-          p_title:z.string().trim().min(5).max(160).parse(get('title')),
-          p_body:z.string().trim().min(100).max(10000).parse(get('body')),
+          p_version:parsed.data.version,
+          p_title:parsed.data.title,
+          p_body:parsed.data.body,
         });
+        if(result.error?.code==='23505')return safeError(undefined,'policy_version_exists');
+        if(result.data)publishedPolicyRedirect=`/rh/privacidade?aviso=${result.data}&publicado=1`;
         break;
       }
       case 'privacy-request': result=await client.rpc('request_privacy',{p_kind:z.enum(['access','correction','deletion','portability','revocation','information']).parse(get('kind')),p_detail:opt('detail')});break;
@@ -106,7 +113,7 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
     }
     if(result.error) { log('mutation_rejected',{code:result.error.code}); return safeError(result.error.code,result.error.message); }
     revalidatePath('/','layout');
-    return {ok:true,message:'Alterações salvas com sucesso.',...(destination?{redirect:destination}:{})};
+    if(!publishedPolicyRedirect)return {ok:true,message:'Alterações salvas com sucesso.',...(destination?{redirect:destination}:{})};
   } catch(error) {
     if(error instanceof z.ZodError) {
       if(get('op')==='job-stages')return safeError(undefined,error.issues.some(issue=>issue.message.includes('primeira etapa'))?'initial_stage_final':'invalid_stages');
@@ -115,4 +122,7 @@ export async function mutate(_:ActionResult,form:FormData):Promise<ActionResult>
     }
     log('mutation_failed');return safeError();
   }
+  // Publishing remounts the editor with the new active record. Navigate before
+  // its previous action state disappears; redirect must stay outside the catch.
+  redirect(publishedPolicyRedirect);
 }

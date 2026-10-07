@@ -19,6 +19,7 @@ const users = [];
 let browser;
 let activePage;
 let staffId;
+let pausedPolicyIds=[];
 function totp(secret) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   const bits = [...secret.toUpperCase()].map(character => alphabet.indexOf(character).toString(2).padStart(5, '0')).join('');
@@ -126,6 +127,7 @@ try {
   await page.screenshot({ path: 'artifacts/curriculum-fields/candidate-desktop.png', fullPage: true });
   await save(page, 'Salvar dados do currículo');
   await page.reload();
+  await page.getByRole('button', { name: 'Remover Comunicação', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Remover Comunicação', exact: true }).count(), 1);
   assert.equal(await page.getByLabel('Habilitação (opcional)').inputValue(), 'AB');
   assert.equal(await page.getByRole('button',{name:'Remover Trabalho em equipe',exact:true}).count(),1);
@@ -163,6 +165,24 @@ try {
   await experiences.locator('.entry-bullets').getByText('Atividade revisada pelo candidato',{exact:true}).waitFor();
   const pdf = await page.request.get(`${base}/api/curriculos/${candidateId}/pdf`); assert.equal(pdf.status(), 200);
   await writeFile('artifacts/curriculum-fields/exported-example.pdf', await pdf.body());
+
+  await page.goto(`${base}/candidato/perfil?etapa=revisao`);
+  await page.getByRole('article',{name:'Currículo profissional'}).waitFor();
+  for(const label of ['Resumo profissional','Experiência profissional','Formação acadêmica','Cursos e aperfeiçoamento','Certificações','Idiomas','Habilidades','Competências pessoais'])await page.locator('.cv-paper').getByRole('heading',{name:label,exact:true}).waitFor();
+  await page.locator('.cv-paper .cv-bullets').getByText('Atividade revisada pelo candidato',{exact:true}).waitFor();
+  const readinessGap=await page.locator('.cv-readiness').evaluate(element=>element.querySelector('.actions').getBoundingClientRect().top-element.querySelector('.alert').getBoundingClientRect().bottom);
+  assert.ok(readinessGap>=18,'A ação lateral tem espaço após o aviso');
+  await page.screenshot({path:'artifacts/curriculum-fields/review-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Currículo sem overflow mobile');
+  await page.screenshot({path:'artifacts/curriculum-fields/review-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  const originalEntry=(await database.query("select id,description from public.profile_entries where candidate_id=$1 and kind='experience' limit 1",[candidateId])).rows[0];
+  const longDescription=Array.from({length:36},(_,index)=>`Resultado fictício ${String(index+1).padStart(2,'0')}: colaboração em equipe, comunicação eficaz, desenvolvimento de sistemas e documentação de soluções com foco na qualidade dos projetos e melhoria contínua.`).join('\n');
+  await database.query('update public.profile_entries set description=$1 where id=$2',[longDescription,originalEntry.id]);
+  const longPdf=await page.request.get(`${base}/api/curriculos/${candidateId}/pdf`);assert.equal(longPdf.status(),200);
+  await writeFile('artifacts/curriculum-fields/long-example.pdf',await longPdf.body());
+  await database.query('update public.profile_entries set description=$1 where id=$2',[originalEntry.description,originalEntry.id]);
 
   const staffPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   activePage=staffPage;
@@ -291,12 +311,28 @@ try {
   await staffPage.setViewportSize({width:1440,height:1000});
   await staffPage.locator('select[name="status"]').selectOption('published'); await save(staffPage, 'Atualizar status');
   activePage=page;
+  // Temporarily pause only the existing local notices and restore them even on failure.
+  pausedPolicyIds=(await database.query('update public.privacy_policies set active=false where active returning id')).rows.map(row=>row.id);
+  await page.goto(`${base}/vagas/${job.slug}/candidatar`);
+  await page.getByRole('status').filter({hasText:'A Herbamed ainda não publicou o aviso de privacidade'}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Enviar candidatura',exact:true}).count(),0,'Sem aviso não há envio');
+  await page.screenshot({path:'artifacts/curriculum-fields/application-policy-missing.png',fullPage:true});
+  await database.query('update public.privacy_policies set active=true where id=any($1::uuid[])',[pausedPolicyIds]);pausedPolicyIds=[];
   await page.goto(`${base}/vagas/${job.slug}/candidatar`);
   await page.getByText('Currículo completo para candidatura.',{exact:true}).waitFor();
   await page.getByLabel('Disponibilidade fictícia?').selectOption('Tarde');
   await page.getByLabel('Conte uma experiência fictícia').fill('Experiência fictícia de teste em equipe.');
   await page.locator('input[name="acknowledge"]').check();
+  const gaps=await page.locator('.application-form').evaluate(form=>{
+    const fields=[...form.querySelectorAll('.field')];
+    return fields.slice(1).map((field,index)=>field.getBoundingClientRect().top-fields[index].getBoundingClientRect().bottom);
+  });
+  assert.ok(gaps.every(gap=>gap>=23),'Perguntas com espaçamento consistente');
   await page.screenshot({path:'artifacts/curriculum-fields/application-questions.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Candidatura sem overflow mobile');
+  await page.screenshot({path:'artifacts/curriculum-fields/application-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
   await page.getByRole('button',{name:'Enviar candidatura',exact:true}).click();
   await page.waitForURL('**/candidato/candidaturas',{timeout:30000});
   assert.deepEqual((await database.query('select answer from public.application_answers where application_id=(select id from public.applications where job_id=$1 and candidate_id=$2) order by answer',[job.id,candidateId])).rows.map(row=>row.answer),['Experiência fictícia de teste em equipe.','Tarde']);
@@ -311,6 +347,7 @@ try {
   throw error;
 } finally {
   await browser?.close(); server.kill();
+  if(pausedPolicyIds.length)await database.query('update public.privacy_policies set active=true where id=any($1::uuid[])',[pausedPolicyIds]);
   if (staffId) {
     await database.query('delete from public.application_events where application_id in (select a.id from public.applications a join public.jobs j on j.id=a.job_id where j.created_by=$1)', [staffId]);
     await database.query('delete from public.application_answers where application_id in (select a.id from public.applications a join public.jobs j on j.id=a.job_id where j.created_by=$1)', [staffId]);

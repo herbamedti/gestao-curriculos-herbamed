@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { session } from '@/modules/auth/session';
 import { PageHeading, Badge } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
-import { CurriculumFields, InterestFields, CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
+import { CurriculumFields, InterestFields } from '@/modules/candidates/curriculum-fields';
 import { CurriculumEntryCards } from '@/modules/candidates/entry-cards';
 import { TrajectoryCards } from '@/modules/candidates/trajectory-cards';
-import { entryKindLabel, entryDetails } from '@/modules/candidates/details';
+import { CurriculumPreview } from '@/modules/candidates/curriculum-preview';
+import { TalentPreference } from '@/modules/candidates/talent-preference';
 import { mutate } from '@/modules/actions';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 
@@ -52,18 +53,16 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
 
     {tab==='trajetoria'&&<div className="card"><h2>Sua trajetória</h2><p className="muted">Adicione experiências, histórico acadêmico, cursos, certificados e idiomas em seus respectivos cards. Para candidatar-se, basta uma experiência ou formação com nome e instituição.</p>{profile?<TrajectoryCards candidateId={profile.id} entries={entries} />:<p>Comece pelo cadastro em Dados e habilidades; os mesmos cards estão disponíveis lá para salvar junto do currículo inicial.</p>}</div>}
 
-    {tab==='revisao'&&<div className="split">
-      <div className="card"><h2>Revisão do currículo</h2>
-        {profile?<><p><strong>{profile.full_name}</strong><br />{profile.headline||'Área de atuação pendente'} · {profile.city||'Cidade pendente'}{profile.state?` / ${profile.state}`:''}</p>
-          <p>{profile.email} · {profile.phone||'Telefone pendente'}</p><p className="detail-body">{profile.summary||'Resumo profissional pendente.'}</p>
-          <CurriculumExtraSummary candidate={profile} />
-          <p><strong>Habilidades:</strong> {profile.skills.join(', ')||'Pendente'}</p>
-          <h3>Trajetória</h3>{entries.length?entries.map(entry=><p key={entry.id}><strong>{entry.title}</strong> · {entry.organization}<br /><small>{entryKindLabel(entry.kind)}{entryDetails(entry)?` · ${entryDetails(entry)}`:''}</small></p>):<p className="muted">Nenhuma informação adicionada.</p>}
-          <a className="button outlined" href={`/api/curriculos/${profile.id}/pdf`}>Exportar currículo em PDF</a>
-        </>:<p>Salve seus dados para visualizar o currículo.</p>}
-      </div>
-      <aside className="card"><h2>Antes de se candidatar</h2>{missing.length===0?<div className="alert success">Seu currículo contém os dados essenciais para uma candidatura.</div>:<><p className="muted">Complete os itens abaixo para poder enviar candidaturas:</p><ul>{curriculumFields.filter(field=>missing.includes(field.key)).map(field=><li key={field.key}><Link className="text-link" href={`/candidato/perfil?etapa=${field.step}`}>{field.label}</Link></li>)}</ul></>}
-        <Link className="button tonal" href="/vagas">Explorar vagas</Link>
+    {tab==='revisao'&&<div className="cv-review-layout">
+      <section className="cv-review-main" aria-labelledby="cv-review-title">
+        <div className="cv-review-toolbar"><h2 id="cv-review-title">Revisão do currículo</h2>
+          {profile && <a className="button outlined" href={`/api/curriculos/${profile.id}/pdf`}>Exportar currículo em PDF</a>}
+        </div>
+        {profile ? <CurriculumPreview person={profile} entries={entries} /> : <div className="card"><p>Salve seus dados para visualizar o currículo.</p></div>}
+      </section>
+      <aside className="card cv-readiness"><h2>Antes de se candidatar</h2>{missing.length===0?<div className="alert success">Seu currículo contém os dados essenciais para uma candidatura.</div>:<div><p className="muted">Complete os itens abaixo para poder enviar candidaturas:</p><ul>{curriculumFields.filter(field=>missing.includes(field.key)).map(field=><li key={field.key}><Link className="text-link" href={`/candidato/perfil?etapa=${field.step}`}>{field.label}</Link></li>)}</ul></div>}
+        <div className="actions"><Link className="button tonal" href="/vagas">Explorar vagas</Link></div>
+        <TalentPreference profile={profile} />
       </aside>
     </div>}
   </>;

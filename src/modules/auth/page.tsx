@@ -6,7 +6,7 @@ import { Captcha } from '@/ui/captcha';
 import { Icon } from '@/ui/icon';
 import { config, features } from '@/lib/config';
 import { SignupFields } from './signup-fields';
-export function AuthPage({ mode, error }: { mode:'login'|'signup'|'recover'|'password'; error?:string }) {
+export function AuthPage({ mode, error, registrationPending = false }: { mode:'login'|'signup'|'recover'|'password'; error?:string; registrationPending?:boolean }) {
   const titles={login:'Boas-vindas de volta.',signup:'Sua trajetória começa aqui.',recover:'Recupere seu acesso.',password:'Defina uma nova senha.'};
   const subtitles={login:'Entre para acompanhar suas próximas oportunidades.',signup:'Crie sua conta e dê o próximo passo com a Herbamed.',recover:'Enviaremos as instruções para o seu e-mail.',password:'Use pelo menos 12 caracteres para proteger sua conta.'};
   const emailFlowDisabled = !features.email && (mode === 'recover' || mode === 'password');
@@ -23,6 +23,7 @@ export function AuthPage({ mode, error }: { mode:'login'|'signup'|'recover'|'pas
         {mode!=='recover' && <Field name="password" label="Senha" type="password" required minLength={12} maxLength={128} autoComplete={mode==='login'?'current-password':'new-password'}/>}
         <Captcha siteKey={features.turnstile ? process.env.TURNSTILE_SITE_KEY : undefined}/>
         {mode==='signup' && <p className="muted">Ao continuar, você pode consultar como seus dados são tratados no <Link className="text-link" href="/privacidade">aviso de privacidade</Link>.</p>}
+        {mode==='login' && registrationPending && <div role="status" className="alert success">Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere a sua senha.</div>}
       </ActionForm>}
       <div className="auth-links">
         <Link href={mode==='login'?'/criar-conta':'/entrar'}>{mode==='login'?'Ainda não tenho conta':'Voltar para entrar'}</Link>

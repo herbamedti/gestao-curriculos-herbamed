@@ -2,6 +2,8 @@
 
 ## Cadastro público
 
+Após um cadastro aceito com envio de e-mail ativo, a aplicação redireciona para `/entrar?cadastro=confirmar-email` e mostra na tela de login: “Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere a sua senha.” Entradas inválidas ou falhas de envio permanecem no cadastro, com o erro correspondente. O aviso é fixo, sem e-mail, CPF ou token na URL, e não confirma a existência prévia de uma conta.
+
 `/criar-conta` exige e-mail, senha com pelo menos 12 caracteres, CPF e data de nascimento. Há validação no navegador, no servidor e, para a identificação, na RPC SQL. O CPF aceita números ou máscara e confere os dois dígitos verificadores; não consulta a Receita Federal nem comprova titularidade. A data deve existir no calendário, estar entre 1900 e a data atual no fuso de São Paulo. O e-mail passa por validação de formato; a posse da caixa é verificada pelo link do Supabase, com **Confirm email** ativo.
 
 Antes de chamar Auth, o servidor emite uma autorização aleatória válida por dez minutos. Somente o hash da autorização é armazenado, junto aos dados privados; ela vincula o e-mail aos dados já validados e às quotas consumidas. O hook PostgreSQL **Before User Created**, `public.guard_candidate_signup`, exige essa autorização em novos cadastros públicos por senha, incluindo chamadas diretas à API Auth. Login Azure continua permitido, sem conceder perfil interno. A API administrativa do Auth, restrita ao servidor, continua disponível para provisionamento da equipe e fixtures locais.
@@ -23,6 +25,8 @@ Quotas persistentes valem com ou sem e-mail: cinco tentativas por origem/hora, t
 Se o servidor receber uma sessão imediatamente no cadastro com envio ativo, encerra essa sessão e informa erro de configuração. Isso detecta **Confirm email** desligado, mas não substitui a configuração do painel; uma conta auto-confirmada pode entrar diretamente pelo Auth. **Before User Created** precisa estar ativo para fechar o cadastro público direto. Ambos os hooks estão disponíveis nos planos Free e Pro segundo a documentação do Supabase.
 
 ## Equipe
+
+A administração das contas de candidatos fica separada em `/rh/contas-candidatos`, também exclusiva do principal em AAL2. Lista contas com ou sem currículo e permite desativação/reativação com motivo, preservação de histórico e bloqueio de sessões anteriores. Requer a migration `202610070001_portal_account_access.sql` antes de publicar o código. Veja `PORTAL_ACCOUNTS_AND_PRIVACY.md`.
 
 `/rh/usuarios` permite à conta principal criar um usuário por e-mail/senha, atribuir um perfil ativo, ativar/desativar acesso, editar nome/perfil e escolher a exigência de duas etapas. O padrão é ativo e com MFA exigido. A exigência individual vale independentemente do perfil; desativá-la preserva o autenticador já cadastrado. A configuração de perfil mantém suas permissões e escopo de vagas.
 
