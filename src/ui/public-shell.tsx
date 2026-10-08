@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { Brand } from './brand';
 import { Icon } from './icon';
 import { config } from '@/lib/config';

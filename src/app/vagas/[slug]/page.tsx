@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
 import { JobBulletList } from '@/modules/jobs/bullet-list';
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/supabase';
 import { config, isConfigured } from '@/lib/config';

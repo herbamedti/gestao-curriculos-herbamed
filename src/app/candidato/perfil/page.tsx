@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { DownloadButton } from '@/ui/download-button';
+import Link from '@/ui/link';
 import { session } from '@/modules/auth/session';
 import { PageHeading, Badge } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
@@ -56,7 +57,7 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
     {tab==='revisao'&&<div className="cv-review-layout">
       <section className="cv-review-main" aria-labelledby="cv-review-title">
         <div className="cv-review-toolbar"><h2 id="cv-review-title">Revisão do currículo</h2>
-          {profile && <a className="button outlined" href={`/api/curriculos/${profile.id}/pdf`}>Exportar currículo em PDF</a>}
+          {profile && <DownloadButton href={`/api/curriculos/${profile.id}/pdf`} type="application/pdf" filename="curriculo.pdf">Exportar currículo em PDF</DownloadButton>}
         </div>
         {profile ? <CurriculumPreview person={profile} entries={entries} /> : <div className="card"><p>Salve seus dados para visualizar o currículo.</p></div>}
       </section>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import Image from 'next/image';
 import { Brand } from '@/ui/brand';
 import { ActionForm, Field, Hidden } from '@/ui/form';
@@ -7,6 +7,7 @@ import { Captcha } from '@/ui/captcha';
 import { Icon } from '@/ui/icon';
 import { config, features } from '@/lib/config';
 import { SignupFields } from './signup-fields';
+import { SubmitButton } from '@/ui/submit-button';
 export function AuthPage({ mode, error, registrationPending = false }: { mode:'login'|'signup'|'recover'|'password'; error?:string; registrationPending?:boolean }) {
   const titles={login:'Boas-vindas de volta.',signup:'Sua trajetória começa aqui.',recover:'Recupere seu acesso.',password:'Defina uma nova senha.'};
   const subtitles={login:'Entre para acompanhar suas próximas oportunidades.',signup:'Crie sua conta e dê o próximo passo com a Herbamed.',recover:'Enviaremos as instruções para o seu e-mail.',password:'Use pelo menos 12 caracteres para proteger sua conta.'};
@@ -17,8 +18,8 @@ export function AuthPage({ mode, error, registrationPending = false }: { mode:'l
       <h2>{titles[mode]}</h2>
       <p className="muted">{emailFlowDisabled ? 'A recuperação por e-mail está temporariamente desativada. Procure o administrador para recuperar seu acesso.' : subtitles[mode]}</p>
       {error && <p role="alert" className="alert danger">{error==='google-equipe'?'O login Google é destinado aos candidatos. Para acessar a gestão, use seu método de acesso interno autorizado.':'O acesso não pôde ser concluído. Verifique a configuração com a equipe responsável.'}</p>}
-      {features.google&&(mode==='login'||mode==='signup')&&<div className="google-login"><ActionForm action={google} submit={<><Image src="/brand/google-g.png" width={20} height={20} alt=""/><span>Continuar com Google</span></>} className="google-login-form"><Captcha siteKey={features.turnstile?process.env.TURNSTILE_SITE_KEY:undefined}/></ActionForm><p className="muted">Para candidatos. No primeiro acesso, CPF e data de nascimento também são obrigatórios.</p><div className="divider">OU CONTINUE COM E-MAIL</div></div>}
-      {!emailFlowDisabled && <ActionForm action={authenticate} submit={{login:'Entrar',signup:'Criar minha conta',recover:'Enviar instruções',password:'Salvar nova senha'}[mode]}>
+      {features.google&&(mode==='login'||mode==='signup')&&<div className="google-login"><ActionForm action={google} pendingLabel="Conectando ao Google…" submit={<><Image src="/brand/google-g.png" width={20} height={20} alt=""/><span>Continuar com Google</span></>} className="google-login-form"><Captcha siteKey={features.turnstile?process.env.TURNSTILE_SITE_KEY:undefined}/></ActionForm><p className="muted">Para candidatos. No primeiro acesso, CPF e data de nascimento também são obrigatórios.</p><div className="divider">OU CONTINUE COM E-MAIL</div></div>}
+      {!emailFlowDisabled && <ActionForm action={authenticate} pendingLabel={{login:'Entrando…',signup:'Criando conta…',recover:'Enviando instruções…',password:'Atualizando senha…'}[mode]} submit={{login:'Entrar',signup:'Criar minha conta',recover:'Enviar instruções',password:'Salvar nova senha'}[mode]}>
         <Hidden name="mode" value={mode}/>
         {mode!=='password' && <Field name="email" label="E-mail" type="email" required autoComplete="email" maxLength={254}/>}
         {mode==='signup' && <SignupFields />}
@@ -34,7 +35,7 @@ export function AuthPage({ mode, error, registrationPending = false }: { mode:'l
       {mode==='login' && <>
         <div className="divider">EQUIPE HERBAMED</div>
         <p className="muted">{config.environment === 'demo' ? 'Administradores autorizados também podem entrar com e-mail e senha acima. Confirme o acesso com seu aplicativo autenticador.' : 'Use sua conta corporativa. O acesso interno depende de autorização.'}</p>
-        {config.environment !== 'demo' && <form action={microsoft}><button className="button outlined" style={{width:'100%'}}><Icon name="corporate_fare"/>Entrar com Microsoft</button></form>}
+        {config.environment !== 'demo' && <form action={microsoft}><SubmitButton className="button outlined" pendingLabel="Conectando à Microsoft…" style={{width:'100%'}}><Icon name="corporate_fare"/>Entrar com Microsoft</SubmitButton></form>}
       </>}
     </main>
   </div>;

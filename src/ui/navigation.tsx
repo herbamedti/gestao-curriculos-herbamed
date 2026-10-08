@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from './icon';
 export type NavGroup={label:string;items:{label:string;href:string;icon:string}[]};

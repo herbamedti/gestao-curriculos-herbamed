@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { DownloadButton } from '@/ui/download-button';
+import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@/modules/auth/session';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
@@ -37,7 +38,7 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
 
   return <>
     <PageHeading eyebrow="TALENTOS / PERFIL" title={person.full_name} description={`${person.headline||'Área não informada'} · ${person.city||'Local não informado'}`}>
-      <a className="button outlined" href={`/api/curriculos/${person.id}/pdf`}>Exportar currículo em PDF</a>
+      <DownloadButton href={`/api/curriculos/${person.id}/pdf`} type="application/pdf" filename="curriculo.pdf">Exportar currículo em PDF</DownloadButton>
       <Badge tone={person.talent_pool?'green':''}>{person.talent_pool?'Banco de talentos':'Candidaturas'}</Badge>
     </PageHeading>
     <div className="split"><div>

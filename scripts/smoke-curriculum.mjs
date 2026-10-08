@@ -33,11 +33,10 @@ try{
 
   await page.goto('http://localhost:3000/candidato/perfil?etapa=revisao');
   await page.getByText('Seu currículo contém os dados essenciais').waitFor();
-  const pdfPath=await page.locator('a[href$="/pdf"]').getAttribute('href');
-  const pdf=await page.request.get(`http://localhost:3000${pdfPath}`);
-  assert.equal(pdf.status(),200);
-  assert.match(pdf.headers()['content-type'],/application\/pdf/);
-  assert.equal((await pdf.body()).subarray(0,4).toString(),'%PDF');
+  const downloading=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Exportar currículo em PDF',exact:true}).click();
+  const pdf=await downloading;
+  assert.equal((await readFile(await pdf.path())).subarray(0,4).toString(),'%PDF');
 
   await page.goto('http://localhost:3000/vagas/assistente-de-logistica-local-003/candidatar');
   if(await page.getByRole('button',{name:'Enviar candidatura'}).count()){

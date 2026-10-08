@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { session } from '@/modules/auth/session';
 import { PageHeading, Empty, Badge, date, statusLabels } from '@/ui/common';
 import { ActionForm, Hidden } from '@/ui/form';

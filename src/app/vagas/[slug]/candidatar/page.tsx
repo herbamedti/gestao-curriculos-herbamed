@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
 import { session } from '@/modules/auth/session';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
@@ -28,7 +28,7 @@ export default async function Apply({params}:{params:Promise<{slug:string}>}) {
       <div className="card application-card"><h2>Seu currículo na plataforma</h2>
         {missing.length?<><p>Para se candidatar, complete os dados abaixo:</p><ul>{curriculumFields.filter(field=>missing.includes(field.key)).map(field=><li key={field.key}><Link className="text-link" href={`/candidato/perfil?etapa=${field.step}`}>{field.label}</Link></li>)}</ul><Link className="button primary" href="/candidato/perfil?etapa=revisao">Completar meu currículo</Link></>:<><div className="alert success">Currículo completo para candidatura.</div><p>{profile?.full_name} · {profile?.headline} · {profile?.city}</p><Link className="text-link" href="/candidato/perfil?etapa=revisao">Revisar ou exportar currículo</Link></>}
       </div>
-      {missing.length===0&&<div className="card application-card"><h2>Enviar candidatura</h2>{policy?<ActionForm action={applyToJob} submit="Enviar candidatura" className="application-form">
+      {missing.length===0&&<div className="card application-card"><h2>Enviar candidatura</h2>{policy?<ActionForm action={applyToJob} submit="Enviar candidatura" pendingLabel="Enviando candidatura…" className="application-form">
         <Hidden name="op" value="apply" /><Hidden name="job_id" value={job.id} /><Hidden name="policy_id" value={policy.id} />
         {questions?.map(q=>q.kind==='choice'?<Select key={q.id} name={`answer_${q.id}`} label={q.label} required={q.required}><option value="">Selecione uma opção</option>{q.options.map(option=><option key={option} value={option}>{option}</option>)}</Select>:<TextArea key={q.id} name={`answer_${q.id}`} label={q.label} required={q.required} />)}
         <label className="check"><input type="checkbox" name="acknowledge" required /><span>Li o <Link className="text-link" href="/privacidade" target="_blank" rel="noreferrer">aviso de privacidade</Link> (versão {policy.version}).</span></label>

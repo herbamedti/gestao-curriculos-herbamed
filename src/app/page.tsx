@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import Image from 'next/image';
 import { PublicShell } from '@/ui/public-shell';
 import { Icon } from '@/ui/icon';

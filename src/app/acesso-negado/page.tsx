@@ -1,2 +1,2 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 export default function Denied() { return <main id="conteudo" className="container narrow page-section"><h1>Acesso restrito</h1><p>Seu perfil não tem a permissão necessária, ou precisa de autenticação em duas etapas. Solicite a revisão do acesso à equipe responsável.</p><div className="actions"><Link href="/seguranca" className="button primary">Verificar autenticação</Link><Link href="/candidato" className="button outlined">Minha área</Link></div></main>; }

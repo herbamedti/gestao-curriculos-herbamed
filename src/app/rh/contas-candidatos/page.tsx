@@ -1,4 +1,6 @@
-import Link from 'next/link';
+import Form from 'next/form';
+import { SubmitButton } from '@/ui/submit-button';
+import Link from '@/ui/link';
 import { z } from 'zod';
 import { requirePermission } from '@/modules/auth/session';
 import { managePortalAccount } from '@/modules/auth/portal-accounts';
@@ -15,11 +17,11 @@ export default async function PortalAccounts({ searchParams }: { searchParams: P
   const href = (page: number) => `?${new URLSearchParams({ q: p.q, active: p.active, page: String(page) })}`;
   return <>
     <PageHeading eyebrow="ADMINISTRAÇÃO" title="Contas de candidatos" description="Gerencie o acesso das pessoas cadastradas no portal, inclusive aquelas que ainda não montaram o currículo." />
-    <form className="search-bar portal-account-filters" action="/rh/contas-candidatos">
+    <Form className="search-bar portal-account-filters" action="/rh/contas-candidatos">
       <label className="field"><span>Nome ou e-mail</span><input name="q" defaultValue={p.q} maxLength={100} placeholder="Buscar conta" /></label>
       <label className="field"><span>Acesso</span><select name="active" defaultValue={p.active}><option value="">Todos</option><option value="true">Ativo</option><option value="false">Desativado</option></select></label>
-      <button className="button primary">Filtrar</button>
-    </form>
+      <SubmitButton className="button primary" pendingLabel="Buscando…">Filtrar</SubmitButton>
+    </Form>
     <p className="muted">Desativar bloqueia o uso da plataforma e as sessões anteriores. Currículo e histórico são preservados. Após reativar, é necessário um novo login.</p>
     {error ? <div role="alert" className="alert danger">Não foi possível carregar as contas. Confira se a migração de gestão de contas foi aplicada.</div> : accounts?.length ? <div className="portal-accounts">
       {accounts.map(account => <article className="card portal-account" key={account.user_id}>

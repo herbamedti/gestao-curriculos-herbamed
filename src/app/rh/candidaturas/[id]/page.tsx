@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { DownloadButton } from '@/ui/download-button';
+import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@/modules/auth/session';
 import { PageHeading, Badge, date } from '@/ui/common';
@@ -33,7 +34,7 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
         <p className="detail-body">{person.data?.summary||'Sem resumo.'}</p>
         <p><strong>Habilidades:</strong> {person.data?.skills.join(', ')||'Não informadas'}</p>
         {entries.data?.map(entry=><div className="message" key={entry.id}><strong>{entry.title}</strong><p>{entry.organization} · {entry.kind}</p>{entry.description&&<p>{entry.description}</p>}</div>)}
-        <a className="button outlined" href={`/api/curriculos/${app.candidate_id}/pdf`}>Exportar currículo em PDF</a>
+        <DownloadButton href={`/api/curriculos/${app.candidate_id}/pdf`} type="application/pdf" filename="curriculo.pdf">Exportar currículo em PDF</DownloadButton>
       </div>
       <div className="card"><h2>Respostas</h2>{answers.data?.length?answers.data.map(answer=><div key={answer.question_id} className="message"><strong>{questions.data?.find(q=>q.id===answer.question_id)?.label}</strong><p>{answer.answer||'Sem resposta'}</p></div>):<p className="muted">Sem perguntas adicionais.</p>}</div>
       <div className="card"><h2>Histórico</h2><ul className="timeline">{events.data?.map(event=><li key={event.id}><strong>{event.to_stage?stages.data?.find(s=>s.id===event.to_stage)?.name:'Registro'}</strong><p>{event.note}</p><small>{date(event.created_at,true)}</small></li>)}</ul></div>

@@ -123,4 +123,37 @@
 .portal-account details .form { padding-top: 20px; }
 @media (max-width: 760px) { .application-card { padding: 22px; } .portal-account .card-header { flex-direction: column; } .portal-account-info { grid-template-columns: repeat(2,minmax(0,1fr)); } .portal-account-filters { flex-direction: column; align-items: stretch; } .talent-pool-note .text-link { margin: 10px 0 0; display: flex; } }
 @media (max-width: 1150px) { .cv-review-layout { grid-template-columns: 1fr; } }
+.loading-spinner { display: inline-block; width: 18px; height: 18px; flex: 0 0 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: loading-spin .75s linear infinite; }
+.button[aria-busy="true"] { cursor: progress; gap: 10px; }
+.feedback-link { position: relative; }
+.link-feedback { position: absolute; right: -22px; top: 50%; transform: translateY(-50%); color: var(--primary); opacity: 0; pointer-events: none; transition: opacity var(--duration); }
+.link-feedback[data-pending="true"] { opacity: 1; }
+.button .link-feedback, .nav-link .link-feedback { right: 12px; color: inherit; }
+.button.feedback-link { padding-inline-end: 34px; }
+.nav-link.feedback-link { padding-inline-end: 38px; }
+.navigation-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1100; overflow: hidden; opacity: 0; background: var(--primary-container); pointer-events: none; }
+.navigation-progress::after { content: ''; display: block; height: 100%; width: 35%; background: var(--primary); }
+.app-feedback[data-navigating="true"] .navigation-progress { opacity: 1; }
+.app-feedback[data-navigating="true"] .navigation-progress::after { animation: loading-progress 1.2s ease-in-out infinite; }
+.navigation-status { position: fixed; top: 80px; right: 24px; z-index: 1090; display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); color: var(--primary-text); box-shadow: var(--elevation-2); font-size: 13px; pointer-events: none; }
+.navigation-status:not(:empty) { padding: 12px 18px; }
+.navigation-status:empty { display: none; }
+.workspace-content { transition: opacity var(--duration), filter var(--duration); }
+.workspace-content[aria-busy="true"] { opacity: .55; filter: blur(1px); pointer-events: none; }
+.page-loading { padding: 16px 0; min-height: 360px; }
+.page-loading-heading { display: flex; align-items: center; gap: 16px; color: var(--primary-text); margin-bottom: 32px; }
+.page-loading-heading strong { font-size: 18px; }
+.page-loading-heading p { color: var(--text-secondary); margin: 4px 0 0; }
+.page-loading-skeletons { display: grid; gap: 20px; }
+.page-loading-skeletons .skeleton { margin: 0; }
+.loading-title { height: 32px; width: min(360px,70%); }
+.loading-line { height: 16px; width: min(560px,90%); }
+.loading-card { height: 140px; }
+.download-control { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 100%; }
+.download-message { font-size: 12px; color: var(--text-secondary); max-width: 300px; }
+.download-message:empty { display: none; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+@keyframes loading-progress { from { transform: translateX(-110%); } to { transform: translateX(400%); } }
+@media (max-width: 760px) { .navigation-status { top: auto; bottom: 24px; right: 16px; left: 16px; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .loading-spinner, .app-feedback[data-navigating="true"] .navigation-progress::after, .page-loading .skeleton { animation: none; } .workspace-content, .link-feedback { transition: none; } }
 @media (max-width: 760px) { .cv-paper { padding: 28px 22px; } .cv-name { font-size: 26px; } .cv-headline { font-size: 15px; } .cv-review-toolbar { align-items: flex-start; flex-direction: column; } .cv-entry-heading { display: block; } .cv-period { margin-top: 5px; } }

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { db } from '@/lib/supabase';
 import { mutate } from '@/modules/actions';
 import { ActionForm, Hidden } from '@/ui/form';

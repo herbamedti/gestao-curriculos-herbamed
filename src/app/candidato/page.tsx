@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { session } from '@/modules/auth/session';
 import { PageHeading, Empty, date } from '@/ui/common';
 import { Icon } from '@/ui/icon';

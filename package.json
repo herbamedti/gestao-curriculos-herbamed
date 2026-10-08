@@ -19,6 +19,7 @@
     "test:e2e:email": "node scripts/smoke-email.mjs",
     "test:e2e:registration": "node scripts/smoke-registration-admin.mjs",
     "test:e2e:google": "node scripts/smoke-google-login.mjs",
+    "test:e2e:loading": "node scripts/smoke-loading-feedback.mjs",
     "email:test": "node --conditions=react-server --env-file=.env.graph.local --import tsx scripts/test-graph-email.ts",
     "test:e2e:legacy": "node scripts/smoke-local.mjs",
     "test:db": "supabase test db",

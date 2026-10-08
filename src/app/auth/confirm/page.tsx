@@ -2,7 +2,7 @@ import { Brand } from '@/ui/brand';
 import { ActionForm, Hidden } from '@/ui/form';
 import { confirmationSchema } from '@/modules/email/auth-messages';
 import { confirmEmail } from '@/modules/auth/confirm-email';
-import Link from 'next/link';
+import Link from '@/ui/link';
 
 export default async function ConfirmPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

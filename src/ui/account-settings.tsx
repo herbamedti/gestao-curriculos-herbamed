@@ -31,7 +31,7 @@ export function AccountSettings({ name, email, staff, mfaEnabled, factorId, azur
       {emailEnabled && <section className="card">
         <h2>Confirmação por e-mail</h2>
         <p className="muted">Solicite um código no e-mail atual antes de alterar o e-mail, a senha ou desativar a verificação em duas etapas. O código vale por 10 minutos e só pode ser usado uma vez.</p>
-        <ActionForm action={sendAccountEmailCode} submit="Enviar código por e-mail">{null}</ActionForm>
+        <ActionForm action={sendAccountEmailCode} submit="Enviar código por e-mail" pendingLabel="Enviando código…">{null}</ActionForm>
       </section>}
     </div>
     {azure ? <section className="card"><h2>Credenciais Microsoft</h2><p className="muted">O e-mail de login e a senha desta conta são gerenciados pela Microsoft da sua organização. Altere-os com a equipe responsável pelo acesso corporativo.</p></section> : <div className="split">

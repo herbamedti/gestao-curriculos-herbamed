@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { z } from 'zod';
 import { requirePermission } from '@/modules/auth/session';
 import { PageHeading, Badge, Empty, date } from '@/ui/common';

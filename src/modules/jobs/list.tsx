@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/ui/link';
 import { db } from '@/lib/supabase';
 import { isConfigured } from '@/lib/config';
 import { Empty, Badge } from '@/ui/common';

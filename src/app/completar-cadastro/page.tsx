@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { SubmitButton } from '@/ui/submit-button';
+import Link from '@/ui/link';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/supabase';
 import { features } from '@/lib/config';
@@ -21,7 +22,7 @@ export default async function CompleteRegistration() {
     <PageHeading eyebrow="CONCLUIR CADASTRO" title="Complete seus dados" description="Sua conta Google foi autenticada. Informe os dados obrigatórios para acessar o portal de candidatos."/>
     <section className="card google-registration"><p className="muted">Conta autenticada: <strong>{user.email}</strong></p>
       <ActionForm action={completeGoogleRegistration} submit="Concluir cadastro"><SignupFields preserveValues/><Captcha siteKey={features.turnstile?process.env.TURNSTILE_SITE_KEY:undefined}/><p className="muted">Consulte como seus dados são tratados no <Link className="text-link" href="/privacidade">aviso de privacidade</Link>.</p></ActionForm>
-      <form action={logout}><button className="button outlined">Sair e usar outra conta</button></form>
+      <form action={logout}><SubmitButton className="button outlined" pendingLabel="Saindo…">Sair e usar outra conta</SubmitButton></form>
     </section>
   </div></PublicShell>;
 }
