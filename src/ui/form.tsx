@@ -3,15 +3,16 @@ import { useActionState, useEffect, useRef, useState, useTransition } from 'reac
 import { useRouter } from 'next/navigation';
 import { initialResult, type ActionResult } from '@/lib/result';
 import { SubmitButton } from './submit-button';
-export function ActionForm({ action, children, submit = 'Salvar alterações', pendingLabel = 'Salvando…', className = '', confirm }: {
+export function ActionForm({ action, children, submit = 'Salvar alterações', pendingLabel = 'Salvando…', className = '', confirm, onSuccess }: {
   action: (state: ActionResult, form: FormData) => Promise<ActionResult>;
-  children: React.ReactNode; submit?: React.ReactNode; pendingLabel?: string; className?: string; confirm?: string;
+  children: React.ReactNode; submit?: React.ReactNode; pendingLabel?: string; className?: string; confirm?: string; onSuccess?: (result: ActionResult) => void;
 }) {
   const [state, formAction, pending] = useActionState(action, initialResult);
   const [draftError, setDraftError] = useState('');
   const submitLock = useRef(false);
   const [navigating, startNavigation] = useTransition();
   const router = useRouter();
+  useEffect(() => { if (state.ok && !state.redirect) onSuccess?.(state); }, [state, onSuccess]);
   useEffect(() => { if (state.ok && state.redirect) startNavigation(() => router.push(state.redirect!)); }, [state, router]);
   useEffect(() => { if (!pending && !navigating) submitLock.current = false; }, [pending, navigating, state]);
   const busy = pending || navigating;

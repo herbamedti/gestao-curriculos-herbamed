@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       const status=await client.rpc('candidate_registration_status');
       if(status.error||status.data==='unavailable')return NextResponse.redirect(new URL('/conta-indisponivel',config.url));
       if(status.data==='required')return NextResponse.redirect(new URL('/completar-cadastro',config.url));
+      if(status.data==='password_required')return NextResponse.redirect(new URL('/primeiro-acesso',config.url));
       if(status.data==='complete')return NextResponse.redirect(new URL(google?'/candidato':destination,config.url));
     }
   }

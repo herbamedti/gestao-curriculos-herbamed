@@ -92,6 +92,7 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       return {ok:false,message:failure.message};
     }
     const access = await client.rpc('candidate_registration_status');
+    if(!access.error&&access.data==='password_required')return {ok:true,message:'Defina sua senha para concluir o convite.',redirect:'/primeiro-acesso'};
     if(!access.error&&access.data==='required')return {ok:true,message:'Complete os dados obrigatórios do cadastro.',redirect:'/completar-cadastro'};
     if (access.error || access.data!=='complete') {
       await client.auth.signOut();

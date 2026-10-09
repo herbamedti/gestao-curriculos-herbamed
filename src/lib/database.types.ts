@@ -1291,6 +1291,7 @@ export type Database = {
         Args: { p_birth_date: string; p_cpf: string };
         Returns: Json;
       };
+      complete_staff_onboarding: { Args: { p_user_id: string }; Returns: undefined };
       consume_account_email_code: { Args: { p_code: string }; Returns: boolean };
       consume_google_oauth_quota: { Args: { p_origin_key: string }; Returns: boolean };
       consume_signup_quota: { Args: { p_key: string }; Returns: boolean };
@@ -1406,6 +1407,22 @@ export type Database = {
         };
         Returns: boolean;
       };
+      prepare_staff_invitation: {
+        Args: { p_actor_id: string; p_email: string; p_ticket_hash: string };
+        Returns: undefined;
+      };
+      provision_invited_staff: {
+        Args: {
+          p_active: boolean;
+          p_actor_id: string;
+          p_mfa: boolean;
+          p_name: string;
+          p_permissions: Json;
+          p_role_id: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       provision_staff: {
         Args: {
           p_active: boolean;
@@ -1420,6 +1437,10 @@ export type Database = {
       publish_privacy_policy: {
         Args: { p_body: string; p_title: string; p_version: string };
         Returns: string;
+      };
+      record_staff_invitation: {
+        Args: { p_actor_id: string; p_sent: boolean; p_user_id: string };
+        Returns: undefined;
       };
       register_document: {
         Args: { p_candidate_id: string; p_kind: string; p_name: string; p_size: number };
@@ -1445,6 +1466,7 @@ export type Database = {
         };
       };
       request_privacy: { Args: { p_detail?: string; p_kind: string }; Returns: string };
+      reserve_staff_invitation: { Args: { p_user_id?: string }; Returns: boolean };
       resolve_privacy: {
         Args: { p_id: string; p_resolution: string; p_status: string };
         Returns: undefined;
@@ -1487,6 +1509,7 @@ export type Database = {
         Args: { p_active: boolean; p_reason: string; p_user_id: string };
         Returns: undefined;
       };
+      staff_administration_details: { Args: Record<PropertyKey, never>; Returns: Json };
       staff_navigation_permissions: { Args: Record<PropertyKey, never>; Returns: string[] };
       submit_application: {
         Args: { p_answers: Json; p_job_id: string; p_policy_id: string };
@@ -1508,6 +1531,17 @@ export type Database = {
         Returns: undefined;
       };
       update_setting: { Args: { p_key: string; p_value: Json }; Returns: undefined };
+      update_staff_administration: {
+        Args: {
+          p_active: boolean;
+          p_mfa: boolean;
+          p_name: string;
+          p_permissions: Json;
+          p_role_id: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       withdraw_application: { Args: { p_application_id: string }; Returns: undefined };
     };
     Enums: {

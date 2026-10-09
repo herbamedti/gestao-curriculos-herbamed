@@ -16,6 +16,9 @@ export async function confirmEmail(_: ActionResult, form: FormData): Promise<Act
       ok: true, message: 'Confirmação recebida. A alteração depende da confirmação no e-mail atual e no novo endereço.',
     };
     if (!data.session) return { ok: false, message: 'Não foi possível confirmar o acesso. Solicite uma nova mensagem.' };
+    const setup = await client.rpc('candidate_registration_status');
+    if (setup.error || setup.data === 'unavailable') return { ok: true, message: 'Acesso indisponível.', redirect: '/conta-indisponivel' };
+    if (setup.data === 'password_required') return { ok: true, message: 'E-mail confirmado. Crie sua senha.', redirect: '/primeiro-acesso' };
     if (input.data.type === 'recovery' || input.data.type === 'invite')
       return { ok: true, message: 'Acesso confirmado.', redirect: '/nova-senha' };
     const { data: staff, error: staffError } = await client.rpc('is_staff');

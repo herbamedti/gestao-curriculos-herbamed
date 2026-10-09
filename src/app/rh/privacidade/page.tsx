@@ -11,7 +11,8 @@ export default async function PrivacyRequests({
 }: {
   searchParams: Promise<{ aviso?: string; pagina?: string; publicado?: string }>;
 }) {
-  const { client } = await requirePermission('privacy.manage');
+  const { client } = await requirePermission('privacy.read');
+  const { data: canEdit } = await client.rpc('has_permission', { p_permission: 'privacy.manage' });
   const params = await searchParams;
   const selectedId = z.uuid().safeParse(params.aviso);
   const parsedPage = z.coerce
@@ -88,12 +89,12 @@ export default async function PrivacyRequests({
             Não foi possível carregar a versão solicitada. Selecione um aviso no histórico.
           </div>
         )}
-        <PolicyEditor
+        {canEdit && <PolicyEditor
           key={source?.id || 'new-policy'}
           title={source?.title}
           body={source?.body}
           sourceVersion={source?.version}
-        />
+        />}
         <Link className="text-link" href="/privacidade" target="_blank" rel="noopener noreferrer">
           Ver aviso público vigente
         </Link>
@@ -167,7 +168,7 @@ export default async function PrivacyRequests({
               <Link className="text-link" href={`/rh/candidatos/${r.candidate_id}`}>
                 Ver perfil
               </Link>
-              <ActionForm action={mutate} submit="Registrar decisão">
+              {canEdit && <ActionForm action={mutate} submit="Registrar decisão">
                 <Hidden name="op" value="resolve-privacy" />
                 <Hidden name="id" value={r.id} />
                 <Select name="status" label="Situação" value={r.status}>
@@ -176,7 +177,7 @@ export default async function PrivacyRequests({
                   <option value="denied">Indeferida</option>
                 </Select>
                 <TextArea name="resolution" label="Fundamentação e providências" required />
-              </ActionForm>
+              </ActionForm>}
             </article>
           ))
         ) : (

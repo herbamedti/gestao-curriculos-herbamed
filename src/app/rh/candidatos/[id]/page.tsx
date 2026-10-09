@@ -7,6 +7,7 @@ import { StaffCurriculumForm } from '@/modules/candidates/staff-curriculum-form'
 import { PageHeading, Badge, date } from '@/ui/common';
 import { ActionForm, Hidden, Field, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
+import { StaffPermission } from '@/modules/auth/permission-gate';
 import { TrajectoryCards } from '@/modules/candidates/trajectory-cards';
 import { CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
 
@@ -56,7 +57,7 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
       </ActionForm>:<p>Nenhuma vaga publicada disponível para novo vínculo.</p>}</div>}
       <div className="card"><h2>Contato</h2><p>{person.email}</p><p>{person.phone||'Telefone não informado'}</p><p>{person.city}, {person.state}</p>{person.professional_url&&<a className="text-link" href={person.professional_url} target="_blank" rel="noopener noreferrer">Perfil profissional ↗</a>}</div>
       {!!documentsResult.data?.length&&<details className="card"><summary>Arquivos anteriores ({documentsResult.data.length})</summary><p className="muted">Fluxo de upload desativado. Os registros anteriores foram preservados.</p>{documentsResult.data.map(document=><div className="file-row" key={document.id}><strong>{document.original_name}</strong><small>{date(document.created_at)}</small></div>)}</details>}
-      <div className="card"><h2>Entrar em contato</h2><ActionForm action={mutate} submit="Enviar mensagem"><Hidden name="op" value="message" /><Hidden name="candidate_id" value={id} /><Field name="subject" label="Assunto" required /><TextArea name="body" label="Mensagem" required /></ActionForm></div>
+      <div className="card"><h2>Entrar em contato</h2><StaffPermission permission="messages.send" candidateId={id}><ActionForm action={mutate} submit="Enviar mensagem"><Hidden name="op" value="message" /><Hidden name="candidate_id" value={id} /><Field name="subject" label="Assunto" required /><TextArea name="body" label="Mensagem" required /></ActionForm></StaffPermission></div>
     </aside></div>
   </>;
 }

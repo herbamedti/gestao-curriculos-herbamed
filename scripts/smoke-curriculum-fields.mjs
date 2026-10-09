@@ -51,6 +51,8 @@ async function staged(page, kind, label, title) {
     await section.locator(`input[name="draft_${kind}_title"]`).waitFor({state:'visible'});
     const neighboring=page.getByRole('region',{name:'Histórico Acadêmico',exact:true});
     assert.equal(await neighboring.locator('details[open]').count(),0,'Seção vizinha permanece fechada');
+    const firstBox=await section.boundingBox();const nextBox=await neighboring.boundingBox();
+    assert.ok(nextBox.y>=firstBox.y+firstBox.height,'Cada seção de trajetória fica em uma linha');
     assert.ok(await section.evaluate(element=>element.getBoundingClientRect().height)>await neighboring.evaluate(element=>element.getBoundingClientRect().height)+100,'Card fechado não estica com o vizinho');
   }
   await section.locator(`input[name="draft_${kind}_title"]`).fill(title);
@@ -197,7 +199,7 @@ try {
   const brandTop=await staffPage.locator('.sidebar-header').evaluate(element=>element.getBoundingClientRect().top);
   await staffPage.locator('.sidebar-scroll').evaluate(element=>{element.scrollTop=element.scrollHeight;});
   assert.equal(await staffPage.locator('.sidebar-header').evaluate(element=>element.getBoundingClientRect().top),brandTop,'Logo fixa durante rolagem do menu');
-  assert.ok(await staffPage.locator('.sidebar-header .brand>span').evaluate(element=>element.getBoundingClientRect().height<20),'Título do menu em uma linha');
+  assert.ok(await staffPage.locator('.sidebar-header .brand>span:not([aria-hidden])').evaluate(element=>element.getBoundingClientRect().height<20),'Título do menu em uma linha');
   await staffPage.screenshot({path:'artifacts/curriculum-fields/sidebar-fixed.png'});
   await staffPage.setViewportSize({width:1440,height:1000});
   await staffPage.goto(`${base}/rh/candidatos/novo`);
@@ -238,12 +240,14 @@ try {
   await manualCertificate.getByRole('button',{name:'Salvar alteração',exact:true}).click();
   await manualCertificate.getByText(/12 horas/).waitFor();
   await staffPage.goto(`${base}/rh/configuracoes`);
+  await staffPage.getByRole('button', { name: /Níveis de experiência/ }).click();
   const catalog = staffPage.locator('.card').filter({ has: staffPage.getByRole('heading', { name: 'Níveis de experiência', exact: true }) });
-  await catalog.getByLabel('Novo cadastro').fill(`Nível ${token}`); await catalog.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await catalog.getByRole('button', { name: 'Novo registro', exact: true }).click();
+  await staffPage.getByRole('dialog').getByLabel('Nome', { exact: false }).fill(`Nível ${token}`); await staffPage.getByRole('dialog').getByRole('button', { name: 'Salvar cadastro', exact: true }).click();
   await catalog.getByText(`Nível ${token}`, { exact: true }).waitFor();
-  const item = catalog.locator('.catalog-item').filter({ hasText: `Nível ${token}` });
-  await item.getByText('Editar cadastro', { exact: true }).click();
-  await item.locator('input[name="name"]').fill(`Nível editado ${token}`); await item.getByRole('button', { name: 'Salvar cadastro' }).click();
+  const item = catalog.getByRole('row').filter({ hasText: `Nível ${token}` });
+  await item.getByRole('button', { name: `Editar Nível ${token}`, exact: true }).click();
+  await staffPage.getByRole('dialog').locator('input[name="name"]').fill(`Nível editado ${token}`); await staffPage.getByRole('dialog').getByRole('button', { name: 'Salvar cadastro' }).click();
   await catalog.getByText(`Nível editado ${token}`, { exact: true }).waitFor();
   await staffPage.screenshot({ path: 'artifacts/curriculum-fields/settings.png', fullPage: true });
   await staffPage.goto(`${base}/rh/vagas/nova`);

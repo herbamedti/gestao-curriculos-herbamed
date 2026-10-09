@@ -7,6 +7,7 @@ export const session = cache(async () => {
   const { data: { user } } = await client.auth.getUser();
   if (!user) redirect('/entrar');
   const access = await client.rpc('candidate_registration_status');
+  if(!access.error&&access.data==='password_required')redirect('/primeiro-acesso');
   if(!access.error&&access.data==='required')redirect('/completar-cadastro');
   if (access.error || access.data!=='complete') redirect('/conta-indisponivel');
   return { client, user };

@@ -1,5 +1,7 @@
 # Permissões
 
+Atualização de 08/10/2026: exceções individuais em `/rh/usuarios` usam herança do perfil, permissão ou bloqueio por tela/ação, sem ampliar o escopo por vaga. `settings.read`, `privacy.read` e `talents.read` distinguem consulta, edição e acesso à tela de talentos. Uma ação de escrita exige também a leitura da seção. Convites pendentes não acessam dados de domínio. Desativação revoga sessões mesmo após reativação. Ver `STAFF_INVITATIONS_AND_CATALOGS.md`.
+
 Atualização de 06/10/2026: apenas o administrador principal registrado em tabela privada, com AAL2, pode gerenciar usuários e perfis. Essa restrição não é delegável por atribuição de perfil, mesmo Superadministrador. Criação, edição de acesso/MFA e redefinição de senha estão em `/rh/usuarios`; as permissões individuais de recrutamento e o escopo por vaga continuam valendo. A exigência individual `staff.mfa_enabled` é a decisão efetiva de MFA, independente do perfil. Veja `REGISTRATION_AND_STAFF_ADMIN.md`.
 
 `permissions` contém ações granulares; `roles` agrega permissões, escopo `all` ou `assigned` e exigência MFA. `staff_roles` associa usuário; `job_assignments` delimita o escopo `assigned`. A concessão não acontece por domínio de e-mail: requer vínculo explícito. Perfis iniciais são seeds de migration e podem ser alterados por administradores autorizados. O menu lê as permissões efetivas, mas cada página, RPC e download também verifica acesso.
