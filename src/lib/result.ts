@@ -2,6 +2,9 @@ export type ActionResult = { ok: boolean; message: string; redirect?: string };
 export const initialResult: ActionResult = { ok: false, message: '' };
 export function safeError(code?: string, message?: string): ActionResult {
   const known: Record<string, string> = {
+    application_reason_required: 'Informe um motivo entre 3 e 2.000 caracteres.',
+    application_unchanged: 'Altere a etapa ou a situação antes de salvar.',
+    invalid_stage: 'Selecione uma etapa pertencente a esta vaga.',
     account_reason_required: 'Informe um motivo entre 3 e 1.000 caracteres.',
     invalid_portal_account: 'Esta conta não pode ser administrada pela tela de candidatos.',
     job_process_changed: 'As etapas foram alteradas por outra pessoa. Recarregue a página antes de salvar novamente.',

@@ -3,9 +3,9 @@ import { useActionState, useEffect, useRef, useState, useTransition } from 'reac
 import { useRouter } from 'next/navigation';
 import { initialResult, type ActionResult } from '@/lib/result';
 import { SubmitButton } from './submit-button';
-export function ActionForm({ action, children, submit = 'Salvar alterações', pendingLabel = 'Salvando…', className = '', confirm, onSuccess }: {
+export function ActionForm({ action, children, submit = 'Salvar alterações', pendingLabel = 'Salvando…', className = '', confirm, onSuccess, disabled = false }: {
   action: (state: ActionResult, form: FormData) => Promise<ActionResult>;
-  children: React.ReactNode; submit?: React.ReactNode; pendingLabel?: string; className?: string; confirm?: string; onSuccess?: (result: ActionResult) => void;
+  children: React.ReactNode; submit?: React.ReactNode; pendingLabel?: string; className?: string; confirm?: string; onSuccess?: (result: ActionResult) => void; disabled?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, initialResult);
   const [draftError, setDraftError] = useState('');
@@ -17,7 +17,7 @@ export function ActionForm({ action, children, submit = 'Salvar alterações', p
   useEffect(() => { if (!pending && !navigating) submitLock.current = false; }, [pending, navigating, state]);
   const busy = pending || navigating;
   return <form action={formAction} aria-busy={busy} className={`form ${className}`} onSubmit={e => {
-    if(busy || submitLock.current){e.preventDefault();return;}
+    if(disabled || busy || submitLock.current){e.preventDefault();return;}
     setDraftError('');
     const draft=Array.from(e.currentTarget.querySelectorAll<HTMLInputElement>('input[data-list-draft]')).find(input=>input.value.trim());
     if(draft){e.preventDefault();draft.setCustomValidity('Clique em Adicionar ou pressione Enter para incluir este item antes de salvar.');draft.reportValidity();return;}
@@ -29,7 +29,7 @@ export function ActionForm({ action, children, submit = 'Salvar alterações', p
     {children}
     {draftError && <div role="alert" className="alert danger">{draftError}</div>}
     {state.message && <div role={state.ok ? 'status' : 'alert'} className={`alert ${state.ok ? 'success' : 'danger'}`}>{state.message}</div>}
-    <SubmitButton className="button primary" busy={busy} pendingLabel={navigating ? 'Abrindo página…' : pendingLabel}>{submit}</SubmitButton>
+    <SubmitButton className="button primary" disabled={disabled} busy={busy} pendingLabel={navigating ? 'Abrindo página…' : pendingLabel}>{submit}</SubmitButton>
   </form>;
 }
 export function Field({ label, name, type = 'text', required, value, placeholder, ...props }: {

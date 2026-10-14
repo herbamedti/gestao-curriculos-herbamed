@@ -99,6 +99,7 @@ export type Database = {
           resume_id: string | null;
           stage_id: string;
           status: string;
+          unlinked_at: string | null;
           updated_at: string;
         };
         ComputedFields: never;
@@ -110,6 +111,7 @@ export type Database = {
           resume_id?: string | null;
           stage_id: string;
           status?: string;
+          unlinked_at?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -120,6 +122,7 @@ export type Database = {
           resume_id?: string | null;
           stage_id?: string;
           status?: string;
+          unlinked_at?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -1330,6 +1333,16 @@ export type Database = {
         Args: { p_candidate_id: string; p_job_id: string; p_note: string };
         Returns: string;
       };
+      list_job_candidates: {
+        Args: {
+          p_job_id: string;
+          p_page?: number;
+          p_search?: string;
+          p_stage_id?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
       list_managed_staff: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -1499,6 +1512,17 @@ export type Database = {
         };
         Returns: undefined;
       };
+      search_job_candidate_links: {
+        Args: { p_job_id: string; p_search: string };
+        Returns: {
+          already_linked: boolean;
+          city: string;
+          email: string;
+          full_name: string;
+          headline: string;
+          id: string;
+        }[];
+      };
       send_message: {
         Args: { p_body: string; p_candidate_id: string; p_subject: string };
         Returns: undefined;
@@ -1515,7 +1539,27 @@ export type Database = {
         Args: { p_answers: Json; p_job_id: string; p_policy_id: string };
         Returns: string;
       };
+      unlink_job_candidate: {
+        Args: {
+          p_application_id: string;
+          p_expected_updated_at: string;
+          p_job_id: string;
+          p_note: string;
+        };
+        Returns: undefined;
+      };
       update_account_name: { Args: { p_name: string }; Returns: undefined };
+      update_job_application: {
+        Args: {
+          p_application_id: string;
+          p_expected_updated_at: string;
+          p_job_id: string;
+          p_note: string;
+          p_stage_id: string;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
       update_managed_staff: {
         Args: {
           p_active: boolean;

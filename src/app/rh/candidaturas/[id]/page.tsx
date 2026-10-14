@@ -1,7 +1,7 @@
 import { DownloadButton } from '@/ui/download-button';
 import Link from '@/ui/link';
-import { notFound } from 'next/navigation';
-import { requirePermission } from '@/modules/auth/session';
+import { notFound, redirect } from 'next/navigation';
+import { requireStaff } from '@/modules/auth/session';
 import { PageHeading, Badge, date } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
@@ -9,7 +9,9 @@ import { StaffPermission } from '@/modules/auth/permission-gate';
 
 export default async function ApplicationDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
-  const {client}=await requirePermission('applications.read');
+  const {client}=await requireStaff();
+  const access=await client.rpc('can_application',{p_application_id:id,p_permission:'applications.read'});
+  if(access.error||!access.data)redirect('/acesso-negado');
   const {data:app}=await client.from('applications').select('*').eq('id',id).maybeSingle();
   if(!app)notFound();
   const [person,job,stages,events,evaluations,interviews,answers,questions,entries]=await Promise.all([
@@ -24,8 +26,9 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
     client.from('profile_entries').select('id,kind,title,organization,description').eq('candidate_id',app.candidate_id),
   ]);
   return <>
-    <PageHeading eyebrow="RECRUTAMENTO / CANDIDATURA" title={person.data?.full_name||'Candidatura'} description={`${job.data?.title||'Vaga'} · enviada em ${date(app.created_at)}`}>
+    {app.unlinked_at&&<p className="alert info">Esta candidatura foi desvinculada da vaga. O registro permanece disponível para consulta do histórico.</p>}<PageHeading eyebrow="RECRUTAMENTO / CANDIDATURA" title={person.data?.full_name||'Candidatura'} description={`${job.data?.title||'Vaga'} · enviada em ${date(app.created_at)}`}>
       <Badge>{stages.data?.find(s=>s.id===app.stage_id)?.name||app.status}</Badge>
+      <Link className="button tonal" href={`/rh/vagas/${app.job_id}/candidatos`}>Candidatos da vaga</Link>
       <Link className="button outlined" href={`/rh/candidatos/${app.candidate_id}`}>Ver perfil completo</Link>
     </PageHeading>
     <div className="split"><div>
@@ -43,8 +46,8 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
         <StaffPermission permission="evaluations.create" applicationId={id}><ActionForm action={mutate} submit="Registrar"><Hidden name="op" value="evaluation" /><Hidden name="application_id" value={id} /><Select name="kind" label="Tipo"><option value="note">Observação</option><option value="evaluation">Avaliação</option></Select><Field name="criteria" label="Critério (opcional)" /><TextArea name="body" label="Registro" required /><Field name="recommendation" label="Recomendação (opcional)" /></ActionForm></StaffPermission>
       </div>
     </div><aside>
-      <div className="card"><h2>Mover etapa</h2><StaffPermission permission="applications.move" applicationId={id}><ActionForm action={mutate} submit="Registrar movimentação" confirm="Mover esta candidatura? A pessoa receberá uma atualização."><Hidden name="op" value="move" /><Hidden name="application_id" value={id} /><Hidden name="expected_stage" value={app.stage_id} /><Select name="stage_id" label="Nova etapa" required><option value="">Selecione</option>{stages.data?.filter(s=>s.id!==app.stage_id).map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</Select><Field name="note" label="Justificativa (opcional)" /></ActionForm></StaffPermission></div>
-      <div className="card"><h2>Entrevistas</h2>{interviews.data?.map(interview=><div className="message" key={interview.id}><strong>{date(interview.starts_at,true)}</strong><p>{interview.location}</p></div>)}<StaffPermission permission="interviews.manage" applicationId={id}><ActionForm action={mutate} submit="Agendar"><Hidden name="op" value="interview" /><Hidden name="application_id" value={id} /><Field name="starts_at" label="Data e hora" type="datetime-local" required /><Field name="location" label="Local ou link" required /><Field name="duration" label="Duração (minutos)" type="number" value={30} min={10} max={480} /></ActionForm></StaffPermission></div>
+      <div className="card"><h2>Mover etapa</h2>{app.status==='active'&&!app.unlinked_at&&<StaffPermission permission="applications.move" applicationId={id}><ActionForm action={mutate} submit="Registrar movimentação" confirm="Mover esta candidatura? A pessoa receberá uma atualização."><Hidden name="op" value="move" /><Hidden name="application_id" value={id} /><Hidden name="expected_stage" value={app.stage_id} /><Select name="stage_id" label="Nova etapa" required><option value="">Selecione</option>{stages.data?.filter(s=>s.id!==app.stage_id).map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</Select><Field name="note" label="Justificativa (opcional)" /></ActionForm></StaffPermission>}</div>
+      <div className="card"><h2>Entrevistas</h2>{interviews.data?.map(interview=><div className="message" key={interview.id}><strong>{date(interview.starts_at,true)}</strong><p>{interview.location}</p></div>)}{app.status==='active'&&!app.unlinked_at&&<StaffPermission permission="interviews.manage" applicationId={id}><ActionForm action={mutate} submit="Agendar"><Hidden name="op" value="interview" /><Hidden name="application_id" value={id} /><Field name="starts_at" label="Data e hora" type="datetime-local" required /><Field name="location" label="Local ou link" required /><Field name="duration" label="Duração (minutos)" type="number" value={30} min={10} max={480} /></ActionForm></StaffPermission>}</div>
       <div className="card"><h2>Enviar mensagem</h2><StaffPermission permission="messages.send" candidateId={app.candidate_id}><ActionForm action={mutate} submit="Enviar"><Hidden name="op" value="message" /><Hidden name="candidate_id" value={app.candidate_id} /><Field name="subject" label="Assunto" required /><TextArea name="body" label="Mensagem" required /></ActionForm></StaffPermission></div>
     </aside></div>
   </>;

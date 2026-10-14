@@ -18,7 +18,7 @@ export default async function ManageJob({params}:{params:Promise<{id:string}>}) 
   if(!job)notFound();
   return <><PageHeading eyebrow="RECRUTAMENTO / VAGAS" title={job.title} description={`Código ${job.code} · ${job.city}`}>
     <Badge tone={job.status}>{statusLabels[job.status]}</Badge>{job.status==='published'&&<Link className="button outlined" href={`/vagas/${job.slug}`}>Ver no portal</Link>}
-    {pipeline.data&&<Link className="button tonal" href={`/rh/vagas/${id}/pipeline`}>Abrir pipeline</Link>}
+    {pipeline.data&&<><Link className="button primary" href={`/rh/vagas/${id}/candidatos`}>Candidatos da vaga</Link><Link className="button tonal" href={`/rh/vagas/${id}/pipeline`}>Abrir pipeline</Link></>}
   </PageHeading><div className="split"><div>{edit.data ? <>
     <JobEditor job={job} departments={departments||[]} experienceLevels={levels||[]} employmentTypes={types||[]}/>
     <StageEditor jobId={id} stages={(stages||[]).map(({id,name,terminal})=>({id,name,terminal}))}/><QuestionEditor jobId={id} questions={questions||[]}/>

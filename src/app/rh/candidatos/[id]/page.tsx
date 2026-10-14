@@ -1,7 +1,8 @@
 import { DownloadButton } from '@/ui/download-button';
 import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
-import { requirePermission } from '@/modules/auth/session';
+import { requireStaff } from '@/modules/auth/session';
+import { redirect } from 'next/navigation';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 import { StaffCurriculumForm } from '@/modules/candidates/staff-curriculum-form';
 import { PageHeading, Badge, date } from '@/ui/common';
@@ -13,16 +14,18 @@ import { CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
 
 export default async function CandidateDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
-  const {client}=await requirePermission('candidates.read');
+  const {client}=await requireStaff();
+  const access=await client.rpc('can_candidate',{p_candidate_id:id,p_permission:'candidates.read'});
+  if(access.error||!access.data)redirect('/acesso-negado');
   const [personResult,entriesResult,documentsResult,applicationsResult,messagesResult,areasResult,interestsResult,editPermission,linkPermission,openJobsResult]=await Promise.all([
     client.from('candidates').select('*').eq('id',id).maybeSingle(),
     client.from('profile_entries').select('*').eq('candidate_id',id).order('start_date',{ascending:false,nullsFirst:false}),
     client.from('documents').select('id,original_name,status,created_at').eq('candidate_id',id).order('created_at',{ascending:false}),
-    client.from('applications').select('id,job_id,status,created_at').eq('candidate_id',id).order('created_at',{ascending:false}),
+    client.from('applications').select('id,job_id,status,created_at,unlinked_at').eq('candidate_id',id).order('created_at',{ascending:false}),
     client.from('messages').select('*').eq('candidate_id',id).order('created_at',{ascending:false}),
     client.from('interest_areas').select('id,name').eq('active',true).order('name'),
     client.from('candidate_interests').select('area_id').eq('candidate_id',id),
-    client.rpc('has_permission',{p_permission:'candidates.edit'}),
+    client.rpc('can_candidate',{p_permission:'candidates.edit',p_candidate_id:id}),
     client.rpc('has_permission',{p_permission:'applications.link'}),
     client.from('jobs').select('id,title,deadline').eq('status','published').eq('visibility','public').order('title'),
   ]);
@@ -35,7 +38,7 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
   const missing=curriculumMissing(person,entries);
   const canEdit=editPermission.data===true;
   const canLink=linkPermission.data===true;
-  const availableJobs=(openJobsResult.data||[]).filter(job=>!jobIds.includes(job.id)&&(!job.deadline||new Date(job.deadline)>new Date()));
+  const availableJobs=(openJobsResult.data||[]).filter(job=>!applications.some(application=>application.job_id===job.id&&!application.unlinked_at)&&(!job.deadline||new Date(job.deadline)>new Date()));
 
   return <>
     <PageHeading eyebrow="TALENTOS / PERFIL" title={person.full_name} description={`${person.headline||'Área não informada'} · ${person.city||'Local não informado'}`}>
