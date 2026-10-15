@@ -3,6 +3,7 @@ import { db } from '@/lib/supabase';
 import { features } from '@/lib/config';
 import type { ActionResult } from '@/lib/result';
 import { confirmationSchema } from '@/modules/email/auth-messages';
+import { issueRecoveryGrant } from './recovery-grant';
 
 export async function confirmEmail(_: ActionResult, form: FormData): Promise<ActionResult> {
   if (!features.email) return { ok: false, message: 'A confirmação por e-mail está temporariamente desativada.' };
@@ -19,10 +20,10 @@ export async function confirmEmail(_: ActionResult, form: FormData): Promise<Act
     const setup = await client.rpc('candidate_registration_status');
     if (setup.error || setup.data === 'unavailable') return { ok: true, message: 'Acesso indisponível.', redirect: '/conta-indisponivel' };
     if (setup.data === 'password_required') return { ok: true, message: 'E-mail confirmado. Crie sua senha.', redirect: '/primeiro-acesso' };
-    if (input.data.type === 'recovery' || input.data.type === 'invite')
+    if (input.data.type === 'recovery' || input.data.type === 'invite') {
+      await issueRecoveryGrant();
       return { ok: true, message: 'Acesso confirmado.', redirect: '/nova-senha' };
-    const { data: staff, error: staffError } = await client.rpc('is_staff');
-    if (staffError) return { ok: false, message: 'Entre novamente para continuar.', redirect: '/entrar' };
-    return { ok: true, message: 'Acesso confirmado.', redirect: staff ? '/seguranca' : '/candidato' };
+    }
+    return { ok: true, message: 'Acesso confirmado.', redirect: '/minha-area' };
   } catch { return { ok: false, message: 'Não foi possível confirmar agora. Tente novamente.' }; }
 }

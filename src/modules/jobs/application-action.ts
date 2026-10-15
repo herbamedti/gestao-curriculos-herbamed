@@ -2,8 +2,10 @@
 import { redirect } from 'next/navigation';
 import { mutate } from '@/modules/actions';
 import type { ActionResult } from '@/lib/result';
+import { requireCandidate } from '@/modules/auth/session';
 
 export async function applyToJob(state: ActionResult, form: FormData): Promise<ActionResult> {
+  await requireCandidate();
   form.set('op', 'apply');
   const result = await mutate(state, form);
   // The refreshed application page removes its form after persistence. Perform

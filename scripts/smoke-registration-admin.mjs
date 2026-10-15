@@ -76,6 +76,25 @@ try {
  assert.ok(record);users.push(record.id);assert.equal(record.email_confirmed_at,null);
  assert.ok(!record.raw_user_meta_data.cpf && !record.raw_user_meta_data.birth_date,'Dados privados fora do metadata');
  assert.equal((await database.query('select cpf from private.candidate_registration where user_id=$1',[record.id])).rows[0].cpf,'52998224725');
+ const duplicatePage=await browser.newPage({extraHTTPHeaders:{'x-vercel-forwarded-for':`2001:db8:1::${suffix.slice(0,4)}`}});
+ async function repeatSignup() {
+  const beforeDuplicate=(await database.query('select encrypted_password,raw_user_meta_data,confirmation_sent_at from auth.users where id=$1',[record.id])).rows[0];
+  await duplicatePage.goto(`${base}/criar-conta`);
+  await duplicatePage.locator('form').evaluate(form=>{form.noValidate=true;});
+  await duplicatePage.locator('input[name=email]').fill(` ${candidateEmail.toUpperCase()} `);
+  await duplicatePage.locator('input[name=password]').fill(`Different!${suffix}Aa1234`);
+  await duplicatePage.getByLabel('CPF').fill('11144477735');
+  await duplicatePage.getByLabel('Data de nascimento').fill('2000-01-01');
+  await duplicatePage.getByRole('button',{name:'Criar minha conta',exact:true}).click();
+  await duplicatePage.waitForURL(`${base}/entrar?cadastro=confirmar-email`);
+  await duplicatePage.getByRole('status').filter({hasText:'Confira seu e-mail'}).waitFor();
+  assert.equal(await duplicatePage.getByRole('status').innerText(),'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere a sua senha.');
+  assert.equal((await database.query('select id from auth.users where lower(email)=lower($1)',[candidateEmail])).rowCount,1,'E-mail não cria uma segunda conta');
+  const after=(await database.query('select encrypted_password,raw_user_meta_data,confirmation_sent_at from auth.users where id=$1',[record.id])).rows[0];
+  assert.ok(after.encrypted_password===beforeDuplicate.encrypted_password && JSON.stringify(after.raw_user_meta_data)===JSON.stringify(beforeDuplicate.raw_user_meta_data) && String(after.confirmation_sent_at)===String(beforeDuplicate.confirmation_sent_at),'Duplicata não altera senha, metadata nem envia confirmação novamente');
+  assert.equal((await database.query('select cpf from private.candidate_registration where user_id=$1',[record.id])).rows[0].cpf,'52998224725','Duplicata não sobrescreve identificação');
+ }
+ await repeatSignup();
  const unconfirmed=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ANON_KEY,{auth:{persistSession:false}});
  assert.ok((await unconfirmed.auth.signInWithPassword({email:candidateEmail,password})).error,'Login bloqueado antes da confirmação');
  const bypass=await unconfirmed.auth.signUp({email:`bypass-${suffix}@example.test`,password});
@@ -89,6 +108,8 @@ try {
  await candidate.getByRole('heading',{name:'Dados do cadastro'}).waitFor();
  await candidate.getByText('CPF: ***.***.***-25',{exact:true}).waitFor();
  const exportData=await candidate.request.get(`${base}/api/my-data`);
+ await repeatSignup();
+ await duplicatePage.close();
  assert.equal(exportData.status(),200);assert.equal((await exportData.json()).registration.cpf,'52998224725');
  await candidate.setViewportSize({width:390,height:844});
  assert.ok(await candidate.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Conta responsiva');

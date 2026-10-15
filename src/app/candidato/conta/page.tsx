@@ -1,11 +1,11 @@
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { PageHeading } from '@/ui/common';
 import { AccountSettings } from '@/ui/account-settings';
 import { features } from '@/lib/config';
 import { z } from 'zod';
 
 export default async function CandidateAccount() {
-  const { client, user } = await session();
+  const { client, user } = await requireCandidate();
   const [{ data: candidate }, { data: factors }, { data: registration }] = await Promise.all([
     client.from('candidates').select('full_name').eq('user_id', user.id).maybeSingle(),
     client.auth.mfa.listFactors(),

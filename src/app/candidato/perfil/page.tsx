@@ -1,6 +1,6 @@
 import { DownloadButton } from '@/ui/download-button';
 import Link from '@/ui/link';
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { PageHeading, Badge } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { CurriculumFields, InterestFields } from '@/modules/candidates/curriculum-fields';
@@ -12,7 +12,7 @@ import { mutate } from '@/modules/actions';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 
 export default async function Profile({searchParams}:{searchParams:Promise<{etapa?:string}>}) {
-  const {client,user}=await session();
+  const {client,user}=await requireCandidate();
   const [{data:profile},{data:areas,error:areasError}]=await Promise.all([
     client.from('candidates').select('*').eq('user_id',user.id).maybeSingle(),
     client.from('interest_areas').select('id,name').eq('active',true).order('name'),

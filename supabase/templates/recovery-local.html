@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Recuperação de senha</title></head>
+<body style="font-family:Arial,sans-serif;color:#102033;line-height:1.6">
+  <h2>Recupere seu acesso local</h2>
+  <p>Recebemos uma solicitação para alterar a senha da sua conta de testes no ambiente local Herbamed.</p>
+  <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery">Definir uma nova senha</a></p>
+  <p>Você deverá confirmar a solicitação na plataforma antes de escolher a senha.</p>
+  <p>Se não solicitou esta alteração, ignore esta mensagem.</p>
+  <p>Esta mensagem pertence apenas ao ambiente local. A conta de produção é independente.</p>
+</body></html>

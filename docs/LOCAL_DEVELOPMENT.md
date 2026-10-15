@@ -1,5 +1,15 @@
 # Desenvolvimento local
 
+## Login e recuperação do acesso
+
+Os usuários e as senhas do Supabase local são independentes dos de produção. Uma conta criada na nuvem não passa a existir localmente. O usuário RH de demonstração é `rh.demo@herbamed.test`, e a candidata de demonstração é `candidata.demo@example.test`. A senha inicial foi gerada e exibida por `local:setup`.
+
+Se não tiver essa senha, abra `http://localhost:3000/recuperar-senha`, informe o e-mail local e consulte a mensagem em `http://127.0.0.1:54324` (Mailpit). Clique em **Definir uma nova senha**, depois **Confirmar e continuar** e escolha sua senha. Entre novamente no portal local e confirme o autenticador quando solicitado. Esse fluxo preserva os fatores MFA e não altera nenhuma conta de produção. Não execute `local:setup` ou `db:reset` para simplesmente recuperar acesso.
+
+O endereço padrão do app e Site URL local é `http://localhost:3000`. O template de recuperação local usa `/auth/confirm` com confirmação por POST; não depende do processamento de fragmentos de URL no navegador. A allowlist inclui os endereços HTTP locais nas portas 3000 e 3001 (servidor temporário dos smokes). `supabase/config.toml` e o template local não substituem a configuração do Auth hospedado.
+
+O evento `auth.login_failed` com `invalid_credentials:400` significa que o Auth local recusou as credenciais; não é falha do scanner. Logs de `worker`/`clamav` com `quarantine_missing` anteriores à desativação de arquivos pertencem ao fluxo legado e podem continuar no histórico do Docker. Confira data e serviço antes de relacionar esses registros ao login atual.
+
 Veja [README](../README.md) para bootstrap. `npm run local:start` inicia a stack reduzida do Supabase e o app. O Supabase CLI administra os containers de banco, autenticação e API; Compose administra o app. Worker e ClamAV permanecem no perfil opcional `legacy-files` e não sobem no modo padrão. Migrations e seed são aplicadas por `supabase start`/`db reset`. Edite SQL em migrations novas, execute `npm run db:migrate`, `npm run test:db`, `npm run db:types` e `npm run check`. Para codificar sem reconstruir a imagem, `npm run dev` usa `.env.local`; mantenha o Supabase ativo.
 
 As telas de conta ficam em `/candidato/conta` e `/rh/conta`, no menu lateral **Configurações → Conta**. No ambiente local, a opção “Enviar código por e-mail” entrega a mensagem no Mailpit (`http://127.0.0.1:54324`). O teste `npm run test:e2e:account` usa somente os usuários fictícios de `.env.test.local`, verifica o envio e alterna a exigência de MFA do RH, restaurando-a ao final. Não execute `local:setup` para testar a tela em uma base com usuários existentes: esse comando redefine credenciais e fatores dos usuários de demonstração. Após alterar `supabase/config.toml`, reinicie somente a stack local deste projeto para que o GoTrue leia as novas opções.

@@ -1,6 +1,6 @@
 import Link from '@/ui/link';
 import { notFound } from 'next/navigation';
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
 import { PageHeading } from '@/ui/common';
 import { ActionForm, Hidden, TextArea, Select } from '@/ui/form';
@@ -8,7 +8,7 @@ import { applyToJob } from '@/modules/jobs/application-action';
 
 export default async function Apply({params}:{params:Promise<{slug:string}>}) {
   const {slug}=await params;
-  const {client,user}=await session();
+  const {client,user}=await requireCandidate();
   const {data:job}=await client.from('jobs').select('*').eq('slug',slug).eq('status','published').eq('visibility','public').maybeSingle();
   if(!job)notFound();
   const [{data:profile},{data:policy,error:policyError},{data:questions}]=await Promise.all([

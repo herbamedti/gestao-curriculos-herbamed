@@ -76,6 +76,14 @@ try {
   await page.waitForURL(`${base}/candidato`, { timeout: 15000 });
   assert.ok((await service.auth.admin.getUserById(userId)).data.user.email_confirmed_at, 'E-mail não confirmado');
 
+  await page.goto(`${base}/nova-senha`);
+  await page.getByLabel('Senha', { exact: false }).fill(`Blocked!${randomBytes(20).toString('hex')}`);
+  await page.getByRole('button', { name: 'Salvar nova senha' }).click();
+  await page.getByRole('alert').filter({ hasText: 'O link expirou' }).waitFor();
+  const regular = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  assert.ok(!(await regular.auth.signInWithPassword({ email, password })).error, 'Sessão comum não altera senha pela recuperação');
+  await regular.auth.signOut({ scope: 'local' });
+
   // Codes from the Account screen share the SMTP/Graph adapter; test the actual
   // local page and RPC while keeping all corporate credentials out of this smoke.
   await page.goto(`${base}/candidato/conta`);
@@ -91,6 +99,15 @@ try {
   await page.getByRole('button', { name: 'Confirmar e continuar' }).click();
   await page.waitForURL(`${base}/nova-senha`, { timeout: 15000 });
   await page.getByRole('heading', { name: 'Defina uma nova senha.' }).waitFor();
+  const replacement = `Recovered!${randomBytes(20).toString('base64url')}`;
+  await page.getByLabel('Senha', { exact: false }).fill(replacement);
+  await page.getByRole('button', { name: 'Salvar nova senha' }).click();
+  await page.waitForURL(`${base}/entrar`);
+  assert.ok(!(await regular.auth.signInWithPassword({ email, password: replacement })).error, 'Recuperação autorizada altera a senha');
+  await regular.auth.signOut({ scope: 'local' });
+  await page.goto(`${base}/auth/confirm?token_hash=${recovery.data.properties.hashed_token}&type=recovery`);
+  await page.getByRole('button', { name: 'Confirmar e continuar' }).click();
+  await page.getByRole('alert').filter({ hasText: 'O link expirou ou já foi utilizado' }).waitFor();
   console.log('PASS: hook assinado, bloqueio sem assinatura, recibo/retry, confirmação por POST, recuperação e código de Conta no Mailpit.');
 } finally {
   await browser?.close();

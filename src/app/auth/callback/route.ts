@@ -4,7 +4,7 @@ import { config } from '@/lib/config';
 export async function GET(request: NextRequest) {
   const code=request.nextUrl.searchParams.get('code');
   const next=request.nextUrl.searchParams.get('next');
-  const destination=next==='/rh'||next==='/nova-senha'?next:'/candidato';
+  const destination=next==='/nova-senha'?next:'/minha-area';
   if(code) {
     const client=await db();
     const {data,error}=await client.auth.exchangeCodeForSession(code);
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       if(status.error||status.data==='unavailable')return NextResponse.redirect(new URL('/conta-indisponivel',config.url));
       if(status.data==='required')return NextResponse.redirect(new URL('/completar-cadastro',config.url));
       if(status.data==='password_required')return NextResponse.redirect(new URL('/primeiro-acesso',config.url));
-      if(status.data==='complete')return NextResponse.redirect(new URL(google?'/candidato':destination,config.url));
+      if(status.data==='complete')return NextResponse.redirect(new URL(destination,config.url));
     }
   }
   return NextResponse.redirect(new URL('/entrar?erro=confirmacao',config.url));

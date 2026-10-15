@@ -1,10 +1,10 @@
 import Link from '@/ui/link';
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { PageHeading, Empty, date } from '@/ui/common';
 import { Icon } from '@/ui/icon';
 import { profileCompletion } from '@/modules/candidates/profile';
 export default async function CandidateHome() {
-  const {client,user}=await session();
+  const {client,user}=await requireCandidate();
   const {data:profile}=await client.from('candidates').select('*').eq('user_id',user.id).maybeSingle();
   const [entries,apps,notifications]=await Promise.all([client.from('profile_entries').select('kind,title,organization').eq('candidate_id',profile?.id || '00000000-0000-0000-0000-000000000000'),client.from('applications').select('id',{count:'exact',head:true}).eq('status','active'),client.from('notifications').select('*').order('created_at',{ascending:false}).limit(5)]);
   const progress=profileCompletion(profile,entries.data||[]);

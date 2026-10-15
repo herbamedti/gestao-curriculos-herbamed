@@ -1,11 +1,11 @@
 import { DownloadButton } from '@/ui/download-button';
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { PageHeading, Empty, date, Badge } from '@/ui/common';
 import { ActionForm, Hidden, Select, TextArea } from '@/ui/form';
 import { TalentPreference } from '@/modules/candidates/talent-preference';
 import { mutate } from '@/modules/actions';
 export default async function MyPrivacy() {
-  const {client,user}=await session();
+  const {client,user}=await requireCandidate();
   const {data:profile}=await client.from('candidates').select('id,talent_pool').eq('user_id',user.id).maybeSingle();
   const {data:requests}=profile?await client.from('privacy_requests').select('*').eq('candidate_id',profile.id).order('created_at',{ascending:false}):{data:[]};
   return <><PageHeading eyebrow="SEUS DADOS" title="Central de privacidade" description="Transparência e controle sobre seus dados pessoais."/>

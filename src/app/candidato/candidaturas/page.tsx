@@ -1,10 +1,10 @@
 import Link from '@/ui/link';
-import { session } from '@/modules/auth/session';
+import { requireCandidate } from '@/modules/auth/session';
 import { PageHeading, Empty, Badge, date, statusLabels } from '@/ui/common';
 import { ActionForm, Hidden } from '@/ui/form';
 import { mutate } from '@/modules/actions';
 export default async function MyApplications() {
-  const {client,user}=await session();
+  const {client,user}=await requireCandidate();
   const {data:profile}=await client.from('candidates').select('id').eq('user_id',user.id).maybeSingle();
   const {data:apps}=profile?await client.from('applications').select('id,job_id,stage_id,status,created_at,unlinked_at').eq('candidate_id',profile.id).order('created_at',{ascending:false}):{data:[]};
   const jobIds=apps?.map(a=>a.job_id)||[];

@@ -12,6 +12,8 @@ import type { ActionResult } from '@/lib/result';
 import { registrationSchema, candidateIdentificationSchema } from './registration-schema';
 import { safeError } from '@/lib/result';
 import { signupQuotaKeys } from './signup-origin';
+import { existingSignup, signupAcknowledgement } from './signup-response';
+import { consumeRecoveryGrant } from './recovery-grant';
 const credentials = z.object({ email: z.string().trim().toLowerCase().pipe(z.email().max(254)), password: z.string().min(12).max(128) });
 async function verifyBot(form: FormData) {
   if (form.get('website')) return false;
@@ -39,7 +41,7 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       if (!features.email) return {ok:false,message:'A recuperação por e-mail está temporariamente desativada. Altere a senha em Configurações → Conta com o autenticador.'};
       const password=z.string().min(12).max(128).parse(form.get('password'));
       const {data:{user}}=await client.auth.getUser();
-      if(!user) return {ok:false,message:'O link expirou. Solicite uma nova recuperação de senha.'};
+      if(!user || !await consumeRecoveryGrant()) return {ok:false,message:'O link expirou. Solicite uma nova recuperação de senha.'};
       const {error}=await client.auth.updateUser({password});
       if(error) return {ok:false,message:'Não foi possível alterar a senha.'};
       await client.auth.signOut({scope:'global'});
@@ -52,6 +54,7 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
     }
     const {email,password}=credentials.parse(submitted);
     if(mode==='signup') {
+      if(config.environment==='production' && !features.email) return {ok:false,message:'O cadastro está temporariamente indisponível. Tente novamente mais tarde.'};
       const parsed = registrationSchema.safeParse(Object.fromEntries(form));
       if (!parsed.success) return {ok:false,message:parsed.error.issues[0]?.message || 'Confira os dados do cadastro.'};
       const service = serviceDb();
@@ -66,6 +69,12 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       if (reserved.error) return {ok:false,message:'O cadastro está indisponível. Tente novamente mais tarde.'};
       if (!reserved.data) return {ok:false,message:'Muitas tentativas de cadastro. Aguarde antes de tentar novamente.'};
       const signupEmail = parsed.data.email;
+      // Quotas apply equally before this private lookup. Do not call signUp on
+      // an unconfirmed account: repeated signups can otherwise change metadata
+      // or credentials and send additional confirmation messages.
+      const existing = await service.rpc('signup_email_exists', {p_email:signupEmail});
+      if(existing.error) return {ok:false,message:'O cadastro está indisponível. Tente novamente mais tarde.'};
+      if(existing.data) return signupAcknowledgement;
       if (!features.email) {
         // This mode deliberately skips email delivery. Only the server can
         // create a confirmed account; no staff role is granted by registration.
@@ -77,13 +86,13 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
           : {ok:true,message:'Conta criada.',redirect:'/candidato'};
       }
       const {data,error}=await client.auth.signUp({email:signupEmail,password,options:{data:{registration_ticket:ticket},emailRedirectTo:`${config.url}/auth/callback`}});
-      if(error) return {ok:false,message:'Não foi possível concluir o cadastro. Confira os dados ou tente recuperar sua senha.'};
+      if(error) return existingSignup(error) ? signupAcknowledgement : {ok:false,message:'Não foi possível concluir o cadastro. Confira os dados ou tente recuperar sua senha.'};
       if(data.session) {
         await client.auth.signOut();
         log('auth.signup_confirmation_disabled', {code:'configuration_error'});
         return {ok:false,message:'A confirmação de e-mail está indisponível. Avise o administrador para revisar a configuração.'};
       }
-      return {ok:true,message:'Confira seu e-mail para confirmar a conta. Se já possui cadastro, entre ou recupere a sua senha.',redirect:'/entrar?cadastro=confirmar-email'};
+      return signupAcknowledgement;
     }
     const {data:login,error}=await client.auth.signInWithPassword({email,password});
     if(error) {
@@ -107,7 +116,7 @@ export async function authenticate(_: ActionResult, form: FormData): Promise<Act
       const requiresMfa = !account || account.mfa_enabled;
       if (requiresMfa && assurance?.currentLevel !== 'aal2') return {ok:true,message:'Confirme o acesso com seu aplicativo autenticador.',redirect:'/seguranca'};
     }
-    return {ok:true,message:'Acesso confirmado.',redirect:staff?'/rh':'/candidato'};
+    return {ok:true,message:'Acesso confirmado.',redirect:'/minha-area'};
   } catch (error) {
     if (error instanceof z.ZodError) return {ok:false,message:'Verifique os campos. A senha deve ter entre 12 e 128 caracteres.'};
     log('auth.request_failed', { code: 'unexpected_error' });

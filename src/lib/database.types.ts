@@ -1262,6 +1262,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_area: { Args: Record<PropertyKey, never>; Returns: string };
       add_evaluation: {
         Args: {
           p_application_id: string;
@@ -1297,6 +1298,7 @@ export type Database = {
       complete_staff_onboarding: { Args: { p_user_id: string }; Returns: undefined };
       consume_account_email_code: { Args: { p_code: string }; Returns: boolean };
       consume_google_oauth_quota: { Args: { p_origin_key: string }; Returns: boolean };
+      consume_password_recovery_grant: { Args: { p_token_hash: string }; Returns: boolean };
       consume_signup_quota: { Args: { p_key: string }; Returns: boolean };
       create_manual_candidate: { Args: { p_data: Json }; Returns: string };
       curriculum_missing: { Args: { p_candidate_id: string }; Returns: string[] };
@@ -1329,6 +1331,10 @@ export type Database = {
       is_primary_administrator: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean };
       issue_account_email_code: { Args: { p_user_id: string }; Returns: Json };
+      issue_password_recovery_grant: {
+        Args: { p_session_id: string; p_token_hash: string; p_user_id: string };
+        Returns: undefined;
+      };
       link_candidate_to_job: {
         Args: { p_candidate_id: string; p_job_id: string; p_note: string };
         Returns: string;
@@ -1533,6 +1539,7 @@ export type Database = {
         Args: { p_active: boolean; p_reason: string; p_user_id: string };
         Returns: undefined;
       };
+      signup_email_exists: { Args: { p_email: string }; Returns: boolean };
       staff_administration_details: { Args: Record<PropertyKey, never>; Returns: Json };
       staff_navigation_permissions: { Args: Record<PropertyKey, never>; Returns: string[] };
       submit_application: {

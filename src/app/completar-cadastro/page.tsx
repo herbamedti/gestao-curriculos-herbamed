@@ -16,7 +16,7 @@ export default async function CompleteRegistration() {
   if(!user)redirect('/entrar');
   const status=await client.rpc('candidate_registration_status');
   if(status.error||status.data==='unavailable')redirect('/conta-indisponivel');
-  if(status.data==='complete')redirect('/candidato');
+  if(status.data==='complete')redirect('/minha-area');
   if(status.data!=='required')redirect('/entrar');
   return <PublicShell><div className="container narrow page-section">
     <PageHeading eyebrow="CONCLUIR CADASTRO" title="Complete seus dados" description="Sua conta Google foi autenticada. Informe os dados obrigatórios para acessar o portal de candidatos."/>

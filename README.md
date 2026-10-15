@@ -1,5 +1,9 @@
 # Herbamed Carreiras
 
+Revisão de publicação e conta corporativa: [acesso, segurança, custos e migração de 15/10/2026](docs/PRODUCTION_REVIEW_20261015.md).
+
+Entrada **Minha área** por perfil e proteção de candidato/RH: [comportamento, segurança e publicação](docs/ACCOUNT_AREA_ROUTING.md).
+
 Plataforma de carreiras e recrutamento da Herbamed. TypeScript estrito, Next.js, PostgreSQL/Supabase, RBAC/RLS e Docker. O currículo fica em dados estruturados no banco e pode ser exportado em PDF. O nome público pode ser alterado por `APP_NAME`; a configuração no painel registra o valor administrativo.
 
 ## Rodar localmente no Windows
@@ -12,7 +16,7 @@ npm ci
 npm run local:start
 ```
 
-Acesse [portal](http://localhost:3000), [Supabase Studio](http://127.0.0.1:54323) e [e-mails locais](http://127.0.0.1:54324). `local:start` inicia o Supabase reduzido e a aplicação; na primeira execução, também chama `local:setup`, que cria `.env` e `.env.local` ignorados pelo Git e **imprime uma senha temporária nova** para `rh.demo@herbamed.test` e `candidata.demo@example.test`. Ele reinicia o MFA da conta RH fictícia. Na conta RH, configure o autenticador TOTP em `/seguranca` antes de abrir `/rh`. O nome e a senha do usuário RH são exclusivos do banco local; a produção exige Entra ID.
+Acesse [portal](http://localhost:3000), [Supabase Studio](http://127.0.0.1:54323) e [e-mails locais](http://127.0.0.1:54324). `local:start` inicia o Supabase reduzido e a aplicação; na primeira execução, também chama `local:setup`, que cria `.env` e `.env.local` ignorados pelo Git e **imprime uma senha temporária nova** para `rh.demo@herbamed.test` e `candidata.demo@example.test`. Ele reinicia o MFA da conta RH fictícia. Na conta RH, configure o autenticador TOTP em `/seguranca` antes de abrir `/rh`. Contas e senhas são independentes entre o banco local e a produção. Se perdeu a senha local, use [recuperação](http://localhost:3000/recuperar-senha) e abra a mensagem no Mailpit; não é necessário executar setup/reset. Veja [login local](docs/LOCAL_DEVELOPMENT.md).
 
 O currículo agora é preenchido na plataforma e exportado em PDF. Upload, Supabase Storage, worker e ClamAV permanecem no código para referência histórica, mas ficam desativados no modo padrão. O PDF é gerado sob demanda e não é salvo no Storage. Veja `docker compose ps` e logs com `docker compose logs -f app`.
 
