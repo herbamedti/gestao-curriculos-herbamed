@@ -1,5 +1,13 @@
 # Estado de entrega
 
+15/10/2026 — faixa de ambiente removida do layout comum, sem mudar `APP_ENV` ou controles de segurança. Exclusão definitiva de candidaturas disponível na lista, detalhe e candidatos da vaga apenas para o administrador geral designado, com MFA confirmado. Modal exige digitar EXCLUIR, permite cancelar, bloqueia fechamento durante envio e trata versão antiga. RPC restrita remove processo/respostas/etapas/avaliações/entrevistas em transação e preserva currículo, conta, outras candidaturas e auditoria. Lint, TypeScript, build, 56 Vitest, 454 pgTAP e smoke desktop/mobile aprovados; tipos regenerados. Migration `202610150003_delete_application.sql` aplicada somente localmente; publicar antes do código hospedado. Guia em `APPLICATION_DELETION.md`. Nenhuma candidatura real excluída e nenhuma variável nova.
+
+| Exclusão de candidatura | Implementado | Validado aqui | Para produção |
+| --- | --- | --- | --- |
+| Faixa de ambiente | Removida de todas as páginas | Navegador em modo demo, home e login | Publicar código |
+| Ação exclusiva do principal | Modal, confirmação textual, MFA, RPC e auditoria | 454 pgTAP; delegado/candidato/AAL1 recusados | Aplicar `202610150003_delete_application.sql` antes do deploy |
+| Integridade e interface | Exclusão atômica do processo, currículo e demais vínculos preservados | Smoke com cancelamento, conflito, mobile, exclusão e portal candidato | Conferir operação no domínio publicado |
+
 15/10/2026 — separação de áreas: **Minha área** usa `/minha-area` e identifica o perfil no servidor. Visitante vai ao login, candidato ao portal e equipe à primeira tela RH permitida, com MFA quando exigido. Layout e páginas de candidato protegidos individualmente; banco nega currículo próprio, consentimento de banco de talentos e candidatura pessoal de contas internas. Permissões de gestão de candidatos preservadas, inclusive registros históricos. Lint, TypeScript, build, 56 Vitest e 433 pgTAP aprovados; tipos regenerados com Supabase local. Smokes de área (visitante/candidato/RH/MFA/conta desativada/sem dashboard), e-mail/recuperação e cadastro/administração completos aprovados. Guia em `ACCOUNT_AREA_ROUTING.md`. Migration `202610150002_account_area_separation.sql` aplicada somente localmente; publicar no banco hospedado antes do código. Nenhuma variável nova ou credencial existente alterada.
 
 | Separação de áreas | Implementado | Validado aqui | Para produção |

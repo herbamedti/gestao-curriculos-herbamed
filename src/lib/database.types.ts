@@ -1302,6 +1302,10 @@ export type Database = {
       consume_signup_quota: { Args: { p_key: string }; Returns: boolean };
       create_manual_candidate: { Args: { p_data: Json }; Returns: string };
       curriculum_missing: { Args: { p_candidate_id: string }; Returns: string[] };
+      delete_application: {
+        Args: { p_application_id: string; p_expected_updated_at: string };
+        Returns: undefined;
+      };
       delete_catalog: { Args: { p_catalog: string; p_id: string }; Returns: undefined };
       delete_job_question: {
         Args: { p_job_id: string; p_question_id: string };

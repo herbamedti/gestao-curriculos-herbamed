@@ -6,6 +6,7 @@ import { PageHeading, Badge, date } from '@/ui/common';
 import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
 import { StaffPermission } from '@/modules/auth/permission-gate';
+import { DeleteApplicationButton } from '@/modules/applications/delete-button';
 
 export default async function ApplicationDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
@@ -14,6 +15,7 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
   if(access.error||!access.data)redirect('/acesso-negado');
   const {data:app}=await client.from('applications').select('*').eq('id',id).maybeSingle();
   if(!app)notFound();
+  const primary=await client.rpc('is_primary_administrator');
   const [person,job,stages,events,evaluations,interviews,answers,questions,entries]=await Promise.all([
     client.from('candidates').select('*').eq('id',app.candidate_id).maybeSingle(),
     client.from('jobs').select('title').eq('id',app.job_id).maybeSingle(),
@@ -30,6 +32,7 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
       <Badge>{stages.data?.find(s=>s.id===app.stage_id)?.name||app.status}</Badge>
       <Link className="button tonal" href={`/rh/vagas/${app.job_id}/candidatos`}>Candidatos da vaga</Link>
       <Link className="button outlined" href={`/rh/candidatos/${app.candidate_id}`}>Ver perfil completo</Link>
+      {primary.data===true&&<DeleteApplicationButton id={app.id} updatedAt={app.updated_at} name={person.data?.full_name||'pessoa candidata'}/>}
     </PageHeading>
     <div className="split"><div>
       <div className="card"><h2>Currículo da pessoa candidata</h2>

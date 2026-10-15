@@ -1,5 +1,7 @@
 # Segurança
 
+- Exclusão de candidatura em 15/10/2026: operação definitiva exclusiva do administrador principal em AAL2, com validação no servidor e RPC, bloqueio de versão/transação e auditoria preservada. Administrador delegado e candidato não recebem a ação. Currículo, conta e outras candidaturas são preservados. Detalhes e migration em `APPLICATION_DELETION.md`. A remoção da faixa de ambiente é apenas visual, sem mudar flags ou autorização.
+
 - Separação de áreas em 15/10/2026: entrada neutra no servidor, guards por página e ação, classificação por RPC própria e bloqueio no banco dos fluxos pessoais de candidato para contas internas. MFA e permissões do RH preservados; nenhuma escolha de perfil por query string ou metadata editável. Operação e migration em `ACCOUNT_AREA_ROUTING.md`.
 
 - Revisão de 15/10/2026: duplicatas respondem com a mesma mensagem/destino e consulta de existência restrita ao servidor após quotas. Recuperação pela aplicação exige autorização privada de uso único vinculada à sessão, emitida após confirmação do token de e-mail. Next.js 16.3.8 elimina os avisos conhecidos encontrados na dependência de produção. Evidências, limitações da API direta de Auth e preparação corporativa em `PRODUCTION_REVIEW_20261015.md`; isso não constitui aprovação irrestrita para produção.

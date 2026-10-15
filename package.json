@@ -17,6 +17,7 @@
     "test:e2e": "node scripts/smoke-curriculum.mjs",
     "test:e2e:account": "node scripts/smoke-account.mjs",
     "test:e2e:area": "node scripts/smoke-account-area.mjs",
+    "test:e2e:application-delete": "node scripts/smoke-delete-application.mjs",
     "test:e2e:email": "node scripts/smoke-email.mjs",
     "test:e2e:registration": "node scripts/smoke-registration-admin.mjs",
     "test:e2e:google": "node scripts/smoke-google-login.mjs",

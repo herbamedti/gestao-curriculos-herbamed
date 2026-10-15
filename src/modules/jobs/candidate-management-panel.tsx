@@ -8,9 +8,10 @@ import { ActionForm, Hidden, Select } from '@/ui/form';
 import { SubmitButton } from '@/ui/submit-button';
 import { manageJobCandidate, searchJobCandidate } from './candidate-management-actions';
 import type { JobCandidateRow } from './candidate-management-schema';
+import { DeleteApplicationButton } from '@/modules/applications/delete-button';
 
 type Stage={id:string;name:string;terminal:boolean};
-export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,linkAvailable}:{jobId:string;rows:JobCandidateRow[];stages:Stage[];canLink:boolean;canMove:boolean;canUnlink:boolean;linkAvailable:boolean}) {
+export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,canDelete=false,linkAvailable}:{jobId:string;rows:JobCandidateRow[];stages:Stage[];canLink:boolean;canMove:boolean;canUnlink:boolean;canDelete?:boolean;linkAvailable:boolean}) {
   const [modal,setModal]=useState<{type:'edit'|'unlink';row:JobCandidateRow}|'link'|null>(null);
   const [notice,setNotice]=useState('');
   function done(result:{message:string}){setNotice(result.message);setModal(null);}
@@ -31,6 +32,7 @@ export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,l
         {canMove&&!row.unlinked_at&&<button type="button" className="icon-button" title="Editar candidatura" aria-label={`Editar candidatura de ${row.full_name}`} onClick={()=>open({type:'edit',row})}><Icon name="edit"/></button>}
         {canUnlink&&!row.unlinked_at&&<button type="button" className="icon-button danger-action" title="Desvincular da vaga" aria-label={`Desvincular ${row.full_name}`} onClick={()=>open({type:'unlink',row})}><Icon name="person_remove"/></button>}
         {canLink&&row.unlinked_at&&<button type="button" className="icon-button" title="Vincular novamente" aria-label={`Vincular novamente ${row.full_name}`} disabled={!linkAvailable} onClick={()=>open('link')}><Icon name="person_add"/></button>}
+        {canDelete&&<DeleteApplicationButton id={row.id} updatedAt={row.updated_at} name={row.full_name} iconOnly/>}
       </div></td>
     </tr>)}</tbody></table></div>:<div className="empty"><Icon name="group"/><h3>Nenhum candidato neste filtro</h3><p className="muted">Revise os filtros ou vincule um currículo existente à vaga.</p></div>}
     {modal==='link'&&<Modal title="Vincular candidato à vaga" description="Busque um currículo existente por nome ou e-mail. A pessoa receberá uma atualização no portal." onClose={()=>setModal(null)}><LinkCandidate jobId={jobId} onSuccess={done}/></Modal>}
