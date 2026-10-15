@@ -1,5 +1,12 @@
 # Estado de entrega
 
+15/10/2026 — perfil do candidato no RH com grupos espaçados de resumo/habilidades/competências e rodapé de atualização separado por divisor. Contato identificado por rótulos/ícones, telefones formatados, links de e-mail/ligação e apresentação dos contatos complementares. Mesmo card no detalhe da candidatura; tabela de candidatos da vaga com contatos identificados. Formulários do RH/candidato, revisão e PDF compartilham a máscara brasileira, preservando números internacionais e valores legados. Lint, TypeScript, build e 60 Vitest aprovados; smoke local com dados fictícios conferiu links, distância entre competências/data, máscaras, salvamento/reabertura, revisão e ausência de transbordamento em desktop/tablet/celular. Sem migrations, variáveis novas ou alterações de permissões. Documentação em `CURRICULUM_AND_JOB_FIELDS.md`.
+
+| Apresentação de candidatos | Implementado | Validado aqui | Para produção |
+| --- | --- | --- | --- |
+| Perfil e contatos | Grupos com espaçamento próprio, atualização no rodapé, rótulos/ícones e links de contato | Navegador com contatos longos em 1440, 1024 e 390 px; dados de consulta preservados | Publicar código |
+| Telefones | Máscaras no RH/candidato, lista por vaga, revisão e modelo do PDF | 60 testes; navegador com celular, fixo com DDI, número internacional e salvamento | Sem migration ou variável nova |
+
 15/10/2026 — faixa de ambiente removida do layout comum, sem mudar `APP_ENV` ou controles de segurança. Exclusão definitiva de candidaturas disponível na lista, detalhe e candidatos da vaga apenas para o administrador geral designado, com MFA confirmado. Modal exige digitar EXCLUIR, permite cancelar, bloqueia fechamento durante envio e trata versão antiga. RPC restrita remove processo/respostas/etapas/avaliações/entrevistas em transação e preserva currículo, conta, outras candidaturas e auditoria. Lint, TypeScript, build, 56 Vitest, 454 pgTAP e smoke desktop/mobile aprovados; tipos regenerados. Migration `202610150003_delete_application.sql` aplicada somente localmente; publicar antes do código hospedado. Guia em `APPLICATION_DELETION.md`. Nenhuma candidatura real excluída e nenhuma variável nova.
 
 | Exclusão de candidatura | Implementado | Validado aqui | Para produção |

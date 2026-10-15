@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types';
 import { textListItems } from '@/ui/list-items';
+import { formatLocation, formatPhone } from '@/ui/contact-format';
 import { candidateDetails, entryPeriod, type EntryKind } from './details';
 
 export type CurriculumPerson = Pick<
@@ -39,27 +40,16 @@ const sections: { kind: EntryKind; label: string }[] = [
   { kind: 'language', label: 'Idiomas' },
 ];
 
-function phoneLabel(value: string) {
-  let digits = value.replace(/\D/g, '');
-  const country = digits.length === 13 && digits.startsWith('55') ? '+55 ' : '';
-  if (country) digits = digits.slice(2);
-  if (digits.length === 11)
-    return `${country}(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  if (digits.length === 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return value;
-}
-
 export function curriculumDocument(person: CurriculumPerson, entries: CurriculumEntry[]) {
   const details = candidateDetails(person.additional_info);
   return {
     name: person.full_name,
     headline: person.headline,
-    location: [person.city, person.state].filter(Boolean).join(' / '),
+    location: formatLocation(person.city, person.state),
     contacts: [
       person.email,
-      person.phone && phoneLabel(person.phone),
-      details.secondary_phone && `Alternativo: ${phoneLabel(details.secondary_phone)}`,
+      person.phone && formatPhone(person.phone),
+      details.secondary_phone && `Alternativo: ${formatPhone(details.secondary_phone)}`,
     ].filter(Boolean),
     links: [
       { label: 'LinkedIn', url: person.professional_url },

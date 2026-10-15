@@ -7,6 +7,8 @@ import { ActionForm, Field, Hidden, Select, TextArea } from '@/ui/form';
 import { mutate } from '@/modules/actions';
 import { StaffPermission } from '@/modules/auth/permission-gate';
 import { DeleteApplicationButton } from '@/modules/applications/delete-button';
+import { CandidateContactCard } from '@/modules/candidates/contact-card';
+import { formatLocation } from '@/ui/contact-format';
 
 export default async function ApplicationDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
@@ -36,7 +38,7 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
     </PageHeading>
     <div className="split"><div>
       <div className="card"><h2>Currículo da pessoa candidata</h2>
-        <p><strong>Local:</strong> {person.data?.city||'Não informado'}{person.data?.state?`, ${person.data.state}`:''}</p>
+        <p><strong>Local:</strong> {formatLocation(person.data?.city,person.data?.state)||'Não informado'}</p>
         <p><strong>Atuação:</strong> {person.data?.headline||'Não informada'}</p>
         <p className="detail-body">{person.data?.summary||'Sem resumo.'}</p>
         <p><strong>Habilidades:</strong> {person.data?.skills.join(', ')||'Não informadas'}</p>
@@ -49,6 +51,7 @@ export default async function ApplicationDetail({params}:{params:Promise<{id:str
         <StaffPermission permission="evaluations.create" applicationId={id}><ActionForm action={mutate} submit="Registrar"><Hidden name="op" value="evaluation" /><Hidden name="application_id" value={id} /><Select name="kind" label="Tipo"><option value="note">Observação</option><option value="evaluation">Avaliação</option></Select><Field name="criteria" label="Critério (opcional)" /><TextArea name="body" label="Registro" required /><Field name="recommendation" label="Recomendação (opcional)" /></ActionForm></StaffPermission>
       </div>
     </div><aside>
+      {person.data&&<CandidateContactCard person={person.data} />}
       <div className="card"><h2>Mover etapa</h2>{app.status==='active'&&!app.unlinked_at&&<StaffPermission permission="applications.move" applicationId={id}><ActionForm action={mutate} submit="Registrar movimentação" confirm="Mover esta candidatura? A pessoa receberá uma atualização."><Hidden name="op" value="move" /><Hidden name="application_id" value={id} /><Hidden name="expected_stage" value={app.stage_id} /><Select name="stage_id" label="Nova etapa" required><option value="">Selecione</option>{stages.data?.filter(s=>s.id!==app.stage_id).map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</Select><Field name="note" label="Justificativa (opcional)" /></ActionForm></StaffPermission>}</div>
       <div className="card"><h2>Entrevistas</h2>{interviews.data?.map(interview=><div className="message" key={interview.id}><strong>{date(interview.starts_at,true)}</strong><p>{interview.location}</p></div>)}{app.status==='active'&&!app.unlinked_at&&<StaffPermission permission="interviews.manage" applicationId={id}><ActionForm action={mutate} submit="Agendar"><Hidden name="op" value="interview" /><Hidden name="application_id" value={id} /><Field name="starts_at" label="Data e hora" type="datetime-local" required /><Field name="location" label="Local ou link" required /><Field name="duration" label="Duração (minutos)" type="number" value={30} min={10} max={480} /></ActionForm></StaffPermission>}</div>
       <div className="card"><h2>Enviar mensagem</h2><StaffPermission permission="messages.send" candidateId={app.candidate_id}><ActionForm action={mutate} submit="Enviar"><Hidden name="op" value="message" /><Hidden name="candidate_id" value={app.candidate_id} /><Field name="subject" label="Assunto" required /><TextArea name="body" label="Mensagem" required /></ActionForm></StaffPermission></div>

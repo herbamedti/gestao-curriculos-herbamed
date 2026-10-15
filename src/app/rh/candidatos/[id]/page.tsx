@@ -11,6 +11,8 @@ import { mutate } from '@/modules/actions';
 import { StaffPermission } from '@/modules/auth/permission-gate';
 import { TrajectoryCards } from '@/modules/candidates/trajectory-cards';
 import { CurriculumExtraSummary } from '@/modules/candidates/curriculum-fields';
+import { CandidateContactCard } from '@/modules/candidates/contact-card';
+import { formatLocation } from '@/ui/contact-format';
 
 export default async function CandidateDetail({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;
@@ -41,12 +43,18 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
   const availableJobs=(openJobsResult.data||[]).filter(job=>!applications.some(application=>application.job_id===job.id&&!application.unlinked_at)&&(!job.deadline||new Date(job.deadline)>new Date()));
 
   return <>
-    <PageHeading eyebrow="TALENTOS / PERFIL" title={person.full_name} description={`${person.headline||'Área não informada'} · ${person.city||'Local não informado'}`}>
+    <PageHeading eyebrow="TALENTOS / PERFIL" title={person.full_name} description={`${person.headline||'Área não informada'} · ${formatLocation(person.city,person.state)||'Local não informado'}`}>
       <DownloadButton href={`/api/curriculos/${person.id}/pdf`} type="application/pdf" filename="curriculo.pdf">Exportar currículo em PDF</DownloadButton>
       <Badge tone={person.talent_pool?'green':''}>{person.talent_pool?'Banco de talentos':'Candidaturas'}</Badge>
     </PageHeading>
     <div className="split"><div>
-      <div className="card"><h2>Currículo na plataforma</h2><p className="detail-body">{person.summary||'Sem resumo profissional.'}</p><p><strong>Habilidades:</strong> {person.skills.join(', ')||'Não informadas'}</p><CurriculumExtraSummary candidate={person} /><p className="muted">Atualizado em {date(person.updated_at,true)}</p></div>
+      <section className="card candidate-profile-summary" aria-label="Currículo na plataforma">
+        <h2>Currículo na plataforma</h2>
+        <p className="detail-body">{person.summary||'Sem resumo profissional.'}</p>
+        <section className="candidate-summary-section"><h3>Habilidades</h3>{person.skills.length?<ul className="skill-cards">{person.skills.map((skill,index)=><li key={index}>{skill}</li>)}</ul>:<p className="muted">Não informadas</p>}</section>
+        <CurriculumExtraSummary candidate={person} />
+        <p className="muted candidate-summary-updated">Atualizado em <time dateTime={person.updated_at}>{date(person.updated_at,true)}</time></p>
+      </section>
       {canEdit&&<div className="card"><h2>Editar dados do currículo</h2><p className="muted">As alterações ficam visíveis também para a pessoa candidata que cadastrou o próprio perfil.</p><StaffCurriculumForm candidate={person} areas={areasResult.data||[]} areasError={!!areasResult.error} interests={interestsResult.data?.map(item=>item.area_id)||[]} /></div>}
       <div className="card"><h2>Trajetória profissional e acadêmica</h2><TrajectoryCards candidateId={id} entries={entries} canEdit={canEdit} /></div>
       <div className="card"><h2>Vagas vinculadas</h2>{applications.length?applications.map(application=><div className="file-row" key={application.id}><div><strong>{jobs.find(job=>job.id===application.job_id)?.title||'Vaga'}</strong><small>{date(application.created_at)}</small></div><Link className="text-link" href={`/rh/candidaturas/${application.id}`}>Ver processo</Link></div>):<p className="muted">Nenhuma vaga vinculada.</p>}</div>
@@ -58,7 +66,7 @@ export default async function CandidateDetail({params}:{params:Promise<{id:strin
         <Select name="job_id" label="Vaga" required><option value="">Selecione</option>{availableJobs.map(job=><option key={job.id} value={job.id}>{job.title}</option>)}</Select>
         <TextArea name="note" label="Motivo da vinculação" required rows={3} />
       </ActionForm>:<p>Nenhuma vaga publicada disponível para novo vínculo.</p>}</div>}
-      <div className="card"><h2>Contato</h2><p>{person.email}</p><p>{person.phone||'Telefone não informado'}</p><p>{person.city}, {person.state}</p>{person.professional_url&&<a className="text-link" href={person.professional_url} target="_blank" rel="noopener noreferrer">Perfil profissional ↗</a>}</div>
+      <CandidateContactCard person={person} />
       {!!documentsResult.data?.length&&<details className="card"><summary>Arquivos anteriores ({documentsResult.data.length})</summary><p className="muted">Fluxo de upload desativado. Os registros anteriores foram preservados.</p>{documentsResult.data.map(document=><div className="file-row" key={document.id}><strong>{document.original_name}</strong><small>{date(document.created_at)}</small></div>)}</details>}
       <div className="card"><h2>Entrar em contato</h2><StaffPermission permission="messages.send" candidateId={id}><ActionForm action={mutate} submit="Enviar mensagem"><Hidden name="op" value="message" /><Hidden name="candidate_id" value={id} /><Field name="subject" label="Assunto" required /><TextArea name="body" label="Mensagem" required /></ActionForm></StaffPermission></div>
     </aside></div>

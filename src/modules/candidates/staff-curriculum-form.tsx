@@ -3,6 +3,7 @@ import { mutate } from '@/modules/actions';
 import type { Database } from '@/lib/database.types';
 import { CurriculumFields, InterestFields } from './curriculum-fields';
 import { CurriculumEntryCards } from './entry-cards';
+import { PhoneField } from '@/ui/phone-field';
 
 type Candidate=Database['public']['Tables']['candidates']['Row'];
 type Area={id:string;name:string};
@@ -15,7 +16,7 @@ export function StaffCurriculumForm({candidate,areas,interests=[],areasError=fal
     <div className="form-grid">
       <Field name="full_name" label="Nome completo" value={candidate?.full_name} required maxLength={160} />
       <Field name="email" label="E-mail" type="email" value={candidate?.email} required maxLength={255} readOnly={!manual} />
-      <Field name="phone" label="Telefone com DDD" value={candidate?.phone} maxLength={30} placeholder="(47) 99999-9999" />
+      <PhoneField name="phone" label="Telefone com DDD" value={candidate?.phone} />
       <Field name="city" label="Cidade" value={candidate?.city} maxLength={100} />
       <Field name="state" label="UF" value={candidate?.state} maxLength={2} />
       <Field name="headline" label="Cargo ou área de atuação" value={candidate?.headline} maxLength={160} />

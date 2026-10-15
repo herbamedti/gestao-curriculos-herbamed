@@ -174,5 +174,27 @@
 .job-candidate-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px}.job-candidate-summary .card{margin:0;display:flex;flex-direction:column;gap:8px}.job-candidate-summary strong{font-size:2rem}.job-candidate-summary span{color:var(--muted)}.job-candidate-filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(2,minmax(150px,1fr)) auto;gap:16px;align-items:end;margin-bottom:24px}.job-candidate-filters .text-link{grid-column:1/-1}.job-candidate-toolbar{gap:16px;margin-bottom:20px}.candidate-link-results{border:0;padding:0;margin:0;display:grid;gap:8px;min-width:0;max-height:300px;overflow-y:auto}.candidate-link-results legend{margin-bottom:12px}.candidate-link-option{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--surface)}.candidate-link-option:has(input:checked){background:var(--primary-container);border-color:var(--primary)}.candidate-link-option input{width:20px;height:20px;flex-shrink:0}.candidate-link-option span{min-width:0;overflow-wrap:anywhere}.candidate-link-option small{display:block;margin-top:4px}.danger-action{color:var(--error)}@media(max-width:900px){.job-candidate-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.job-candidate-filters{grid-template-columns:minmax(0,1fr)}.job-candidate-summary{gap:8px}.job-candidate-summary .card{padding:12px}.job-candidate-summary span{font-size:.75rem}.job-candidate-summary strong{font-size:1.5rem}.job-candidate-toolbar{align-items:stretch;flex-direction:column}}
 .job-actions-cell{position:relative;text-align:right}.job-row-actions{display:flex;justify-content:flex-end;align-items:center;gap:12px;white-space:nowrap}.job-action-link{min-height:var(--touch-target);gap:6px;white-space:nowrap}.job-action-link .material-symbols-outlined{font-size:18px}.job-action-separator{height:18px;width:1px;flex:0 0 1px;background:var(--border)}
 .job-action-link:hover{text-decoration:none}.job-action-link:hover .job-action-label{text-decoration:underline}
+.candidate-profile-summary{display:grid;gap:var(--space-6);min-width:0;overflow-wrap:anywhere}
+.candidate-profile-summary>h2,.candidate-profile-summary>p{margin:0}
+.candidate-summary-section{display:grid;gap:var(--space-3);min-width:0}
+.candidate-summary-section>h3,.candidate-summary-section>p,.candidate-summary-section>.skill-cards{margin:0}
+.candidate-summary-section>h3{font-size:16px}
+.candidate-profile-summary>.candidate-summary-updated{border-top:1px solid var(--border-soft);padding-top:var(--space-4);font-size:12px}
+.candidate-contact-card{min-width:0}
+.candidate-contact-card>h2{margin-bottom:var(--space-6)}
+.candidate-contact-list{display:grid;gap:var(--space-6);margin:0;min-width:0}
+.candidate-contact-row{min-width:0}
+.candidate-contact-row dt{display:flex;align-items:center;gap:var(--space-2);font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-2)}
+.candidate-contact-row dt>.material-symbols-outlined{font-size:18px;color:var(--primary-text);flex-shrink:0}
+.candidate-contact-row dd{margin:0;padding-left:26px;overflow-wrap:anywhere;line-height:1.6}
+.candidate-contact-link,.candidate-table-contact{color:var(--primary-text);text-decoration:none}
+.candidate-contact-link{display:inline-flex;align-items:baseline;gap:var(--space-2);max-width:100%}
+.candidate-contact-link>span:first-child{min-width:0;overflow-wrap:anywhere}
+.candidate-contact-link>.material-symbols-outlined{font-size:15px;flex-shrink:0}
+.candidate-contact-link:hover>span:first-child,.candidate-table-contact:hover>span:not(.material-symbols-outlined){text-decoration:underline;text-underline-offset:3px}
+.candidate-contact-link:focus-visible,.candidate-table-contact:focus-visible{outline:2px solid var(--focus);outline-offset:4px;border-radius:2px}
+.candidate-table-contacts{display:grid;gap:var(--space-2);margin-top:var(--space-3)}
+.candidate-table-contact{display:inline-flex;align-items:center;gap:var(--space-2);max-width:100%;overflow-wrap:anywhere}
+.candidate-table-contact>.material-symbols-outlined{font-size:16px;flex-shrink:0}
 .text-link:hover{text-decoration:none}.text-link:hover>.link-label,.text-link:hover>strong,.text-link:hover>em,.text-link:not(.feedback-link):hover{text-decoration:underline}
 .shell{min-height:100vh}.admin-modal{white-space:normal;text-align:left;font-size:var(--body)}.application-delete-form{display:grid;grid-template-columns:1fr 1fr;gap:16px}.application-delete-form>.field,.application-delete-form>.alert{grid-column:1/-1}.application-delete-form>.button.primary{background:var(--error);color:var(--on-primary)}.application-delete-form>.button.primary:hover{background:var(--error)}@media(max-width:480px){.application-delete-form{grid-template-columns:1fr}}

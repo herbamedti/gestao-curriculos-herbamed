@@ -10,6 +10,7 @@ import { CurriculumPreview } from '@/modules/candidates/curriculum-preview';
 import { TalentPreference } from '@/modules/candidates/talent-preference';
 import { mutate } from '@/modules/actions';
 import { curriculumFields, curriculumMissing } from '@/modules/candidates/profile';
+import { PhoneField } from '@/ui/phone-field';
 
 export default async function Profile({searchParams}:{searchParams:Promise<{etapa?:string}>}) {
   const {client,user}=await requireCandidate();
@@ -38,7 +39,7 @@ export default async function Profile({searchParams}:{searchParams:Promise<{etap
         <Hidden name="op" value="profile" />{profile&&<Hidden name="candidate_id" value={profile.id} />}
         <div className="form-grid">
           <Field name="full_name" label="Nome completo" value={profile?.full_name} required maxLength={160} autoComplete="name" />
-          <Field name="phone" label="Telefone com DDD" value={profile?.phone} required maxLength={30} autoComplete="tel" placeholder="(47) 99999-9999" />
+          <PhoneField name="phone" label="Telefone com DDD" value={profile?.phone} required />
           <Field name="city" label="Cidade" value={profile?.city} required maxLength={100} />
           <Field name="state" label="UF" value={profile?.state} maxLength={2} />
           <Field name="headline" label="Cargo ou área de atuação" value={profile?.headline} required maxLength={160} placeholder="Ex.: Analista de Qualidade" />

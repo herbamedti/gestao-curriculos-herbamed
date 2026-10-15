@@ -9,6 +9,7 @@ import { SubmitButton } from '@/ui/submit-button';
 import { manageJobCandidate, searchJobCandidate } from './candidate-management-actions';
 import type { JobCandidateRow } from './candidate-management-schema';
 import { DeleteApplicationButton } from '@/modules/applications/delete-button';
+import { formatPhone, phoneHref } from '@/ui/contact-format';
 
 type Stage={id:string;name:string;terminal:boolean};
 export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,canDelete=false,linkAvailable}:{jobId:string;rows:JobCandidateRow[];stages:Stage[];canLink:boolean;canMove:boolean;canUnlink:boolean;canDelete?:boolean;linkAvailable:boolean}) {
@@ -23,7 +24,12 @@ export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,c
     {canLink&&!linkAvailable&&<p className="alert info">Novos vínculos exigem uma vaga publicada, pública, dentro do prazo e com etapas configuradas.</p>}
     {notice&&<p className="alert success" role="status">{notice}</p>}
     {rows.length?<div className="table-wrap"><table className="register-table"><caption className="sr-only">Candidatos desta vaga</caption><thead><tr><th>Candidato</th><th>Etapa</th><th>Situação</th><th>Inscrição</th><th>Ações</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}>
-      <td><Link href={`/rh/candidaturas/${row.id}`} className="text-link"><strong>{row.full_name}</strong></Link><small>{row.headline||'Área não informada'}{row.city?` · ${row.city}`:''}</small><small>{row.email}</small></td>
+      <td><Link href={`/rh/candidaturas/${row.id}`} className="text-link"><strong>{row.full_name}</strong></Link><small>{row.headline||'Área não informada'}{row.city?` · ${row.city}`:''}</small>
+        <div className="candidate-table-contacts">
+          <a className="candidate-table-contact" href={`mailto:${encodeURIComponent(row.email).replace(/%40/g,'@')}`} aria-label={`E-mail: ${row.email}`}><Icon name="mail"/><span>{row.email}</span></a>
+          {row.phone&&<CandidatePhone value={row.phone}/>}
+        </div>
+      </td>
       <td>{row.stage_name}{row.terminal&&<small>Etapa final</small>}</td>
       <td><Badge tone={row.unlinked_at?'pending':row.status==='active'?'green':''}>{row.unlinked_at?'Desvinculada':row.status==='active'?'Em andamento':row.status==='withdrawn'?'Retirada pelo candidato':'Encerrada'}</Badge>{row.unlinked_at&&<small>Em {date(row.unlinked_at)}</small>}</td>
       <td>{date(row.created_at)}</td><td><div className="row-actions">
@@ -47,6 +53,11 @@ export function JobCandidatePanel({jobId,rows,stages,canLink,canMove,canUnlink,c
       </ActionForm>
     </Modal>}
   </>;
+}
+function CandidatePhone({value}:{value:string}) {
+  const href=phoneHref(value);
+  const content=<><Icon name="call"/><span>{formatPhone(value)}</span></>;
+  return href?<a className="candidate-table-contact" href={href} aria-label={`Telefone: ${formatPhone(value)}`}>{content}</a>:<span className="candidate-table-contact">{content}</span>;
 }
 function Reason({label}:{label:string}){return <label className="field"><span>{label} *</span><textarea name="note" required minLength={3} maxLength={2000} rows={3}/></label>;}
 function LinkCandidate({jobId,onSuccess}:{jobId:string;onSuccess:(result:{message:string})=>void}) {
