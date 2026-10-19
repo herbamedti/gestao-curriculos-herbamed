@@ -1,5 +1,13 @@
 # Estado de entrega
 
+19/10/2026 — card **Divulgação da vaga** na gestão do RH, com cópia do endereço público, geração de PNG 1080 × 1350 e prévia/download em modal. Arte baseada na composição fornecida, usando a logo existente e somente dados salvos; destaques limitados, título adaptável e URL no rodapé. Página pública também oferece cópia do link. Rota privada com Auth, MFA vigente, `jobs.read`, escopo/RLS e nova conferência de publicação/visibilidade/prazo; sem service role, gravação ou armazenamento. Lint, TypeScript, build e 65 Vitest aprovados; smoke de interface/API em Next local e Docker Linux, incluindo presença de texto em gerações sucessivas, download, layout mobile e autorização. Auditoria das dependências de produção sem avisos conhecidos. Documentação em `JOB_PROMOTION.md`. Sem migration ou variável nova; conferir `APP_URL` público no deploy.
+
+| Divulgação da vaga | Implementado | Validado aqui | Para produção |
+| --- | --- | --- | --- |
+| Compartilhamento | Link público no RH/portal, clipboard com alternativa manual | Smoke de cópia/fallback e dados salvos | Publicar código; conferir domínio público em `APP_URL` |
+| Postagem | PNG, identidade visual, informações principais, URL e prévia responsiva | Build e imagens normal/extensa/mínima; navegador desktop/mobile | Fontes/logo incluídas no tracing; validar primeiro download hospedado |
+| Autorização | Sessão interna, MFA, leitura/escopo da vaga e estado público vigente | Smoke com visitante, candidato, AAL1, vaga alheia, permissão revogada e conta desativada | Sem nova permissão, migration ou Storage |
+
 15/10/2026 — perfil do candidato no RH com grupos espaçados de resumo/habilidades/competências e rodapé de atualização separado por divisor. Contato identificado por rótulos/ícones, telefones formatados, links de e-mail/ligação e apresentação dos contatos complementares. Mesmo card no detalhe da candidatura; tabela de candidatos da vaga com contatos identificados. Formulários do RH/candidato, revisão e PDF compartilham a máscara brasileira, preservando números internacionais e valores legados. Lint, TypeScript, build e 60 Vitest aprovados; smoke local com dados fictícios conferiu links, distância entre competências/data, máscaras, salvamento/reabertura, revisão e ausência de transbordamento em desktop/tablet/celular. Sem migrations, variáveis novas ou alterações de permissões. Documentação em `CURRICULUM_AND_JOB_FIELDS.md`.
 
 | Apresentação de candidatos | Implementado | Validado aqui | Para produção |

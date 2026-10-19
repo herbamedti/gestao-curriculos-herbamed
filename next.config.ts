@@ -2,6 +2,13 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   output: process.env.VERCEL ? undefined : 'standalone',
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    '/api/rh/vagas/*/postagem': [
+      './node_modules/@fontsource/inter/files/inter-latin-400-normal.woff',
+      './node_modules/@fontsource/inter/files/inter-latin-800-normal.woff',
+      './public/brand/herbamed.png',
+    ],
+  },
   experimental: { serverActions: { bodySizeLimit: '1mb' } },
   async headers() {
     return [{ source: '/:path*', headers: [

@@ -1,0 +1,169 @@
+import { spawn } from 'node:child_process';
+import { randomBytes, createHmac } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { createClient } from '@supabase/supabase-js';
+import { Client } from 'pg';
+import { chromium } from '@playwright/test';
+import sharp from 'sharp';
+
+process.loadEnvFile('.env.local');
+for (const key of ['SUPABASE_URL', 'DATABASE_URL']) {
+  assert.ok(['localhost', '127.0.0.1'].includes(new URL(process.env[key]).hostname), 'Somente ambientes locais');
+}
+const base = process.env.PROMOTION_TEST_URL || 'http://localhost:3001';
+assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname), 'Servidor de teste local');
+const admin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const db = new Client({ connectionString: process.env.DATABASE_URL });
+const suffix = randomBytes(7).toString('hex');
+const password = `Fixture!${randomBytes(24).toString('base64url')}`;
+const users = [], jobs = [];
+let browser, server, page, roleId;
+
+function totp(secret) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = [...secret].map(c => alphabet.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const key = Buffer.from(bits.match(/.{8}/g).map(b => parseInt(b, 2)));
+  const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+  const hash = createHmac('sha1', key).update(counter).digest(), offset = hash.at(-1) & 15;
+  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+}
+async function fixture(kind) {
+  const email = `post-${kind}-${suffix}@example.test`;
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  assert.equal(created.error, null); const id = created.data.user.id; users.push(id);
+  if (kind === 'rh') {
+    await db.query('insert into public.staff(user_id,display_name,password_login_enabled,mfa_enabled) values($1,$2,true,true)', [id, 'RH fictício de divulgação']);
+    await db.query("insert into public.staff_roles(user_id,role_id) select $1,id from public.roles where name='Recrutador'", [id]);
+  }
+  return { id, email };
+}
+async function job() {
+  const slug = `postagem-ficticia-${suffix}-${jobs.length}`;
+  const result = await db.query("insert into public.jobs(slug,title,city,state,work_model,contract_type,description,requirements,benefits,status,published_at) values($1,'Analista fictício de sistemas','Cidade fictícia','SP','Presencial','CLT','Descrição fictícia para a divulgação da oportunidade.',$2,$3,'published',now()) returning id,code,slug", [slug, 'Formação fictícia em tecnologia\nConhecimento fictício de sistemas e colaboração entre equipes\nExperiência fictícia com dados', 'Benefício fictício de alimentação\nBenefício fictício de transporte\nPrograma fictício de desenvolvimento']);
+  jobs.push(result.rows[0].id); return result.rows[0];
+}
+async function login(target, email) {
+  await target.goto(`${base}/entrar`); await target.getByLabel('E-mail', { exact: false }).fill(email);
+  await target.locator('input[name=password]').fill(password);
+  await target.getByRole('button', { name: 'Entrar', exact: true }).click();
+}
+async function png(response, filename) {
+  assert.equal(response.status(), 200); assert.equal(response.headers()['content-type'], 'image/png');
+  assert.match(response.headers()['cache-control'], /private, no-store/);
+  const bytes = await response.body(), meta = await sharp(bytes).metadata();
+  assert.equal(meta.width, 1080); assert.equal(meta.height, 1350); assert.ok(bytes.length < 4 * 1024 * 1024);
+  if (filename) await writeFile(`artifacts/job-promotion/${filename}.png`, bytes);
+  // Check actual text presence across successive images, beyond PNG metadata.
+  for (const [name, left, top, width, height] of [
+    ['destaque', 90, 145, 650, 300], ['título', 105, 490, 870, 115],
+    ['contrato', 88, 630, 300, 40], ['conteúdo', 110, 758, 500, 350], ['link', 100, 1190, 870, 80],
+  ]) {
+    const { data, info } = await sharp(bytes).extract({ left, top, width, height }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    let ink = 0;
+    for (let p = 0; p < data.length; p += info.channels) if (data[p] > 215 && data[p + 1] > 215 && data[p + 2] > 215) ink++;
+    assert.ok(ink > (name === 'contrato' ? 20 : 100), `Texto presente na imagem: ${name} (${ink})`);
+  }
+  const band = await sharp(bytes).extract({ left: 88, top: 1125, width: 904, height: 50 }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  let collision = 0;
+  for (let p = 0; p < band.data.length; p += band.info.channels) if (band.data[p] > 215 && band.data[p + 1] > 215 && band.data[p + 2] > 215) collision++;
+  assert.equal(collision, 0, 'Os destaques não invadem a chamada para candidatura');
+  return bytes;
+}
+try {
+  await db.connect(); await mkdir('artifacts/job-promotion', { recursive: true });
+  const staff = await fixture('rh'), candidate = await fixture('candidate');
+  const opportunity = await job(), other = await job();
+  const endpoint = `${base}/api/rh/vagas/${opportunity.id}/postagem`;
+  if (!process.env.PROMOTION_TEST_URL) {
+    server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', '3001'], { windowsHide: true, stdio: 'ignore', env: { ...process.env, APP_URL: base } });
+  }
+  for (let n = 0; n < 60; n++) {
+    if (server?.exitCode !== null && server?.exitCode !== undefined) throw Error('Servidor temporário indisponível');
+    try { if ((await fetch(`${base}/entrar`, { signal: AbortSignal.timeout(2000) })).ok) break; } catch {}
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' });
+  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'], viewport: { width: 1440, height: 1000 } });
+  page = await context.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
+  assert.equal((await page.request.get(endpoint)).status(), 401, 'Visitante recusado');
+  assert.equal((await page.request.get(`${base}/api/rh/vagas/invalido/postagem`)).status(), 400);
+  await login(page, staff.email); await page.waitForURL('**/seguranca');
+  assert.equal((await page.request.get(endpoint)).status(), 403, 'MFA obrigatório preservado');
+  await page.getByRole('button', { name: 'Configurar autenticador' }).click();
+  const secret = await page.locator('.card code').innerText();
+  await page.getByLabel('Código de seis dígitos').fill(totp(secret));
+  await page.getByRole('button', { name: 'Confirmar código', exact: true }).click(); await page.waitForURL('**/rh');
+  const original = await png(await page.request.get(endpoint), 'poster');
+  await page.goto(`${base}/rh/vagas/${opportunity.id}`);
+  const card = page.getByRole('region', { name: 'Divulgação da vaga' });
+  const publicUrl = `${base}/vagas/${opportunity.slug}`;
+  assert.equal(await card.getByLabel('Link público da vaga').inputValue(), publicUrl);
+  await card.getByRole('button', { name: 'Copiar link', exact: true }).click();
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), publicUrl);
+  await page.locator('input[name=title]').fill('Título ainda não salvo');
+  let requests = 0;
+  await page.route('**/api/rh/vagas/*/postagem', async route => { requests++; await new Promise(resolve => setTimeout(resolve, 700)); await route.continue(); });
+  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).evaluate(button => { button.click(); button.click(); });
+  await card.getByRole('button', { name: 'Gerando postagem…' }).waitFor();
+  const dialog = page.getByRole('dialog'); await dialog.waitFor(); assert.equal(requests, 1, 'Clique repetido não duplica geração');
+  await page.unroute('**/api/rh/vagas/*/postagem');
+  assert.equal(await dialog.getByLabel('Link público da vaga').inputValue(), publicUrl);
+  const downloaded = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Baixar imagem PNG' }).click();
+  const download = await downloaded; assert.equal(download.suggestedFilename(), `vaga-${opportunity.code}-herbamed.png`);
+  const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
+  assert.deepEqual(Buffer.concat(chunks), original, 'Prévia e download usam os dados salvos');
+  await dialog.screenshot({ path: 'artifacts/job-promotion/preview-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await dialog.screenshot({ path: 'artifacts/job-promotion/preview-mobile.png' });
+  assert.ok(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth + 1), 'Modal sem overflow');
+  await dialog.getByRole('button', { name: 'Fechar janela' }).click();
+  await card.screenshot({ path: 'artifacts/job-promotion/card-mobile.png' });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Página sem overflow');
+  // Recoverable generation failures and clipboard fallback.
+  await page.route('**/api/rh/vagas/*/postagem', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Falha fictícia para conferir nova tentativa.' }) }));
+  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).click(); await card.getByRole('alert').waitFor();
+  assert.equal(await card.getByRole('button', { name: 'Gerar postagem', exact: true }).isEnabled(), true);
+  await page.unroute('**/api/rh/vagas/*/postagem');
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw Error('Fixture'); } } }));
+  await card.getByRole('button', { name: 'Copiar link', exact: true }).click();
+  await card.getByRole('status').filter({ hasText: 'Selecione e copie' }).waitFor();
+  assert.equal(await card.getByLabel('Link público da vaga').evaluate(input => input.selectionEnd - input.selectionStart), publicUrl.length);
+  for (const change of ["status='draft'", "status='paused'", "status='closed'", "visibility='internal'", "deadline=now()-interval '1 day'"]) {
+    await db.query(`update public.jobs set ${change} where id=$1`, [opportunity.id]);
+    assert.equal((await page.request.get(endpoint)).status(), 409, 'Vaga indisponível bloqueada');
+    await db.query("update public.jobs set status='published',visibility='public',deadline=null where id=$1", [opportunity.id]);
+  }
+  await db.query("update public.jobs set status='draft' where id=$1", [opportunity.id]);
+  await page.reload(); assert.equal(await card.getByRole('button', { name: 'Gerar postagem' }).count(), 0);
+  await db.query("update public.jobs set status='published',title=$2,requirements=$3,benefits=$4 where id=$1", [opportunity.id, 'Analista fictício de operações e desenvolvimento de sistemas corporativos com atuação em projetos e melhoria dos processos internos e suporte às equipes de trabalho'.slice(0, 160), Array(6).fill('Requisito extenso fictício para conferir a disposição das informações e a leitura das principais responsabilidades.').join('\n'), Array(8).fill('Benefício fictício com condições adicionais disponíveis no portal.').join('\n')]);
+  await png(await page.request.get(endpoint), 'poster-long');
+  await db.query("update public.jobs set requirements='',responsibilities='',benefits='' where id=$1", [opportunity.id]);
+  await png(await page.request.get(endpoint), 'poster-minimal');
+  const portal = await browser.newPage(); await portal.goto(publicUrl);
+  await portal.getByRole('button', { name: 'Copiar link', exact: true }).waitFor();
+  await login(portal, candidate.email); await portal.waitForURL('**/candidato');
+  assert.equal((await portal.request.get(endpoint)).status(), 403, 'Candidato recusado');
+  // Read permission and the assigned-job scope remain authoritative on the API.
+  roleId = (await db.query("insert into public.roles(name,scope) values($1,'assigned') returning id", [`Perfil fictício de postagem ${suffix}`])).rows[0].id;
+  await db.query("insert into public.role_permissions(role_id,permission) values($1,'jobs.read')", [roleId]);
+  await db.query('delete from public.staff_roles where user_id=$1', [staff.id]);
+  await db.query('insert into public.staff_roles(user_id,role_id) values($1,$2)', [staff.id, roleId]);
+  await db.query('insert into public.job_assignments(job_id,user_id) values($1,$2)', [opportunity.id, staff.id]);
+  await png(await page.request.get(endpoint));
+  assert.equal((await page.request.get(`${base}/api/rh/vagas/${other.id}/postagem`)).status(), 403, 'Escopo de outra vaga recusado');
+  await db.query("insert into private.staff_permission_overrides(user_id,permission,allowed) values($1,'jobs.read',false)", [staff.id]);
+  assert.equal((await page.request.get(endpoint)).status(), 403, 'Permissão revogada recusada');
+  await db.query('update public.staff set active=false where user_id=$1', [staff.id]);
+  assert.equal((await page.request.get(endpoint)).status(), 403, 'Conta desativada recusada');
+  assert.deepEqual(errors, []);
+  console.log('PASS: PNG, prévia/download, dados salvos, copiar/fallback, loading/retry, mobile, estados de publicação, MFA, candidato/visitante, permissões e escopo de vaga.');
+} catch (error) {
+  await page?.screenshot({ path: 'artifacts/job-promotion/failure.png', fullPage: true }); throw error;
+} finally {
+  await browser?.close(); server?.kill();
+  for (const id of jobs) await db.query('delete from public.jobs where id=$1', [id]);
+  for (const id of users) { await db.query('delete from public.staff_roles where user_id=$1', [id]); await db.query('delete from public.staff where user_id=$1', [id]); await admin.auth.admin.deleteUser(id); }
+  if (roleId) { await db.query('delete from public.role_permissions where role_id=$1', [roleId]); await db.query('delete from public.roles where id=$1', [roleId]); }
+  await db.end();
+}

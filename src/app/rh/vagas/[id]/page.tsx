@@ -7,6 +7,9 @@ import { StageEditor, QuestionEditor } from '@/modules/jobs/process-editor';
 import { jobItems } from '@/modules/jobs/items';
 import { ActionForm, Hidden, Select } from '@/ui/form';
 import { mutate } from '@/modules/actions';
+import { JobPromotionCard } from '@/modules/jobs/promotion-card';
+import { jobCanShare, publicJobUrl } from '@/modules/jobs/post-model';
+import { config } from '@/lib/config';
 export default async function ManageJob({params}:{params:Promise<{id:string}>}) {
   const id=(await params).id;const {client}=await requirePermission('jobs.read',id);
   const [{data:job},{data:departments},{data:stages},{data:questions},{data:levels},{data:types},edit,publish,pipeline]=await Promise.all([
@@ -27,7 +30,7 @@ export default async function ManageJob({params}:{params:Promise<{id:string}>}) 
       {([['Responsabilidades',job.responsibilities],['Requisitos',job.requirements],['Benefícios',job.benefits]] as const).map(([label,value])=>value&&<section key={label}><h3>{label}</h3><ul>{jobItems(value).map((item,index)=><li key={index}>{item}</li>)}</ul></section>)}
     </section><section className="card"><h2>Etapas do processo</h2><ol>{stages?.map(stage=><li key={stage.id}>{stage.name}{stage.terminal?' · Final':''}</li>)}</ol></section>
     <section className="card"><h2>Perguntas da candidatura</h2>{questions?.length ? questions.map(question=><div className="message" key={question.id}><strong>{question.label}</strong><p>{question.required?'Obrigatória':'Opcional'} · {question.kind==='choice'?'Opção':'Texto'}</p>{question.kind==='choice'&&<ul>{(Array.isArray(question.options)?question.options:[]).map((option,index)=><li key={index}>{String(option)}</li>)}</ul>}</div>) : <p className="muted">Nenhuma pergunta cadastrada.</p>}</section>
-  </>}</div><aside className="card"><h2>Publicação</h2><p className="muted">Vagas publicadas aparecem no portal e aceitam candidaturas até o prazo configurado.</p>
+  </>}</div><aside><section className="card"><h2>Publicação</h2><p className="muted">Vagas publicadas aparecem no portal e aceitam candidaturas até o prazo configurado.</p>
     {publish.data ? <ActionForm action={mutate} submit="Atualizar status" confirm={job.status==='published'?'Alterar o status desta vaga? Novas candidaturas podem ser interrompidas.':undefined}><Hidden name="op" value="job-status"/><Hidden name="job_id" value={id}/><Select name="status" label="Status" value={job.status} required>{['draft','pending','published','paused','closed','cancelled','archived'].map(s=><option value={s} key={s}>{statusLabels[s]}</option>)}</Select></ActionForm> : <p>Seu acesso não permite alterar a publicação desta vaga.</p>}
-  </aside></div></>;
+  </section><JobPromotionCard key={job.updated_at} jobId={id} code={job.code} url={publicJobUrl(config.url,job.slug)} available={jobCanShare(job)} /></aside></div></>;
 }
