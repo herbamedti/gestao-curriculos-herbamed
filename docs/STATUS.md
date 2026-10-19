@@ -1,5 +1,12 @@
 # Estado de entrega
 
+19/10/2026 — preparação da postagem em modal antes de renderizar: destaques pré-selecionados, escolha entre requisitos/responsabilidades/descrição, seleção e edição por item, inclusão/remoção de textos e benefícios opcionais. Avisos individuais de tamanho e contadores; retorno da prévia preserva o rascunho. Textos customizados seguem por POST somente para a imagem, com Zod estrito, origem e tamanho limitados, mantendo título/URL e metadados no servidor. Lint, TypeScript, build, 68 Vitest e smoke desktop/mobile no Docker aprovados, incluindo seleção, edição, avisos, erros/retry, retorno da prévia, validação HTTP e comparação de dados/updated_at da vaga. Container atualizado e health HTTP 200. Cadastro, permissões, MFA e publicação preservados; sem migration ou variável nova. Guia atualizado em `JOB_PROMOTION.md`.
+
+| Preparação da postagem | Implementado | Validado aqui | Para produção |
+| --- | --- | --- | --- |
+| Seleção e edição | Modal anterior à geração, fontes alternáveis, inclusão/remoção, benefícios opcionais | 68 testes e build; smoke de seleção, avisos, ida/volta e download | Publicar código |
+| Geração temporária | POST validado; metadados e autorização no servidor, sem gravação na vaga | Smoke compara dados e `updated_at` antes/depois; acessos negados, origem e payload | Sem migration, variável ou permissão nova |
+
 19/10/2026 — card **Divulgação da vaga** na gestão do RH, com cópia do endereço público, geração de PNG 1080 × 1350 e prévia/download em modal. Arte baseada na composição fornecida, usando a logo existente e somente dados salvos; destaques limitados, título adaptável e URL no rodapé. Página pública também oferece cópia do link. Rota privada com Auth, MFA vigente, `jobs.read`, escopo/RLS e nova conferência de publicação/visibilidade/prazo; sem service role, gravação ou armazenamento. Lint, TypeScript, build e 65 Vitest aprovados; smoke de interface/API em Next local e Docker Linux, incluindo presença de texto em gerações sucessivas, download, layout mobile e autorização. Auditoria das dependências de produção sem avisos conhecidos. Documentação em `JOB_PROMOTION.md`. Sem migration ou variável nova; conferir `APP_URL` público no deploy.
 
 | Divulgação da vaga | Implementado | Validado aqui | Para produção |

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { jobItems } from './items';
 import { formatLocation } from '../../ui/contact-format';
+import { postSections, type PostSelection } from './post-selection';
 
 export const jobPostSchema = z.object({
   id: z.uuid(), code: z.number().int().positive(), title: z.string().min(1).max(160),
@@ -36,7 +37,7 @@ function highlights(value: string, count: number, length: number) {
   return jobItems(value).slice(0, count).map(item => postExcerpt(item, length));
 }
 
-export function jobPostModel(job: JobPostSource, base: string) {
+export function jobPostModel(job: JobPostSource, base: string, selection?: PostSelection) {
   const requirements = highlights(job.requirements, 3, 110);
   const responsibilities = highlights(job.responsibilities, 3, 110);
   const benefits = highlights(job.benefits, 4, 65);
@@ -46,9 +47,11 @@ export function jobPostModel(job: JobPostSource, base: string) {
     workModel: job.work_model,
     contract: job.contract_type,
     url: publicJobUrl(base, job.slug),
-    primary: requirements.length ? { title: 'Requisitos', items: requirements }
+    primary: selection ? { title: postSections[selection.kind].title, items: selection.items.map(item => postExcerpt(item, postSections[selection.kind].length)) }
+      : requirements.length ? { title: 'Requisitos', items: requirements }
       : { title: 'Sobre a vaga', items: [postExcerpt(job.description, 250)] },
-    secondary: benefits.length ? { title: 'Benefícios', items: benefits }
+    secondary: selection ? { title: 'Benefícios', items: selection.benefits.map(item => postExcerpt(item,65)) }
+      : benefits.length ? { title: 'Benefícios', items: benefits }
       : responsibilities.length ? { title: 'Responsabilidades', items: responsibilities }
       : { title: 'Como participar', items: ['Confira a descrição completa no portal e envie sua candidatura pelo link abaixo.'] },
   };

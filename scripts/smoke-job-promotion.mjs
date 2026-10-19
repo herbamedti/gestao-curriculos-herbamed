@@ -40,7 +40,7 @@ async function fixture(kind) {
 }
 async function job() {
   const slug = `postagem-ficticia-${suffix}-${jobs.length}`;
-  const result = await db.query("insert into public.jobs(slug,title,city,state,work_model,contract_type,description,requirements,benefits,status,published_at) values($1,'Analista fictício de sistemas','Cidade fictícia','SP','Presencial','CLT','Descrição fictícia para a divulgação da oportunidade.',$2,$3,'published',now()) returning id,code,slug", [slug, 'Formação fictícia em tecnologia\nConhecimento fictício de sistemas e colaboração entre equipes\nExperiência fictícia com dados', 'Benefício fictício de alimentação\nBenefício fictício de transporte\nPrograma fictício de desenvolvimento']);
+  const result = await db.query("insert into public.jobs(slug,title,city,state,work_model,contract_type,description,requirements,benefits,responsibilities,status,published_at) values($1,'Analista fictício de sistemas','Cidade fictícia','SP','Presencial','CLT','Descrição fictícia para a divulgação da oportunidade.',$2,$3,$4,'published',now()) returning id,code,slug", [slug, 'Formação fictícia em tecnologia\nConhecimento fictício de sistemas e colaboração entre equipes\nExperiência fictícia com dados\nRequisito fictício adicional', 'Benefício fictício de alimentação\nBenefício fictício de transporte\nPrograma fictício de desenvolvimento\nBenefício fictício de capacitação\nBenefício fictício adicional', 'Desenvolver sistemas fictícios\nApoiar equipes fictícias\nDocumentar processos fictícios\nPlanejar atividades fictícias']);
   jobs.push(result.rows[0].id); return result.rows[0];
 }
 async function login(target, email) {
@@ -87,14 +87,17 @@ try {
   const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'], viewport: { width: 1440, height: 1000 } });
   page = await context.newPage(); const errors = []; page.on('pageerror', error => errors.push(error.message));
   assert.equal((await page.request.get(endpoint)).status(), 401, 'Visitante recusado');
+  assert.equal((await page.request.post(endpoint, { data:{kind:'requirements',items:['Texto'],benefits:[]} })).status(), 401);
   assert.equal((await page.request.get(`${base}/api/rh/vagas/invalido/postagem`)).status(), 400);
   await login(page, staff.email); await page.waitForURL('**/seguranca');
   assert.equal((await page.request.get(endpoint)).status(), 403, 'MFA obrigatório preservado');
+  assert.equal((await page.request.post(endpoint, { data:{kind:'requirements',items:['Texto'],benefits:[]} })).status(), 403);
   await page.getByRole('button', { name: 'Configurar autenticador' }).click();
   const secret = await page.locator('.card code').innerText();
   await page.getByLabel('Código de seis dígitos').fill(totp(secret));
   await page.getByRole('button', { name: 'Confirmar código', exact: true }).click(); await page.waitForURL('**/rh');
   const original = await png(await page.request.get(endpoint), 'poster');
+  const savedJob = (await db.query('select title,requirements,responsibilities,benefits,updated_at from public.jobs where id=$1',[opportunity.id])).rows[0];
   await page.goto(`${base}/rh/vagas/${opportunity.id}`);
   const card = page.getByRole('region', { name: 'Divulgação da vaga' });
   const publicUrl = `${base}/vagas/${opportunity.slug}`;
@@ -104,9 +107,19 @@ try {
   await page.locator('input[name=title]').fill('Título ainda não salvo');
   let requests = 0;
   await page.route('**/api/rh/vagas/*/postagem', async route => { requests++; await new Promise(resolve => setTimeout(resolve, 700)); await route.continue(); });
-  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).evaluate(button => { button.click(); button.click(); });
-  await card.getByRole('button', { name: 'Gerando postagem…' }).waitFor();
-  const dialog = page.getByRole('dialog'); await dialog.waitFor(); assert.equal(requests, 1, 'Clique repetido não duplica geração');
+  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).click();
+  const dialog = page.getByRole('dialog'); await dialog.waitFor();
+  assert.equal(requests,0,'Preparar não gera imagem antes da confirmação');
+  assert.equal(await dialog.getByLabel('Conteúdo principal da postagem').inputValue(),'requirements');
+  assert.equal(await dialog.getByLabel('Selecionar requisito 1',{exact:true}).isChecked(),true);
+  assert.equal(await dialog.getByLabel('Selecionar requisito 4',{exact:true}).isDisabled(),true);
+  await dialog.screenshot({path:'artifacts/job-promotion/editor-desktop.png'});
+  const generatedResponse=page.waitForResponse(response=>response.url()===endpoint&&response.request().method()==='POST');
+  await dialog.getByRole('button', { name: 'Gerar postagem', exact: true }).evaluate(button => { button.click(); button.click(); });
+  await dialog.getByRole('button', { name: 'Gerando postagem…' }).waitFor();
+  const generated=await generatedResponse;
+  assert.equal(generated.status(),200,generated.ok()?'Imagem pronta':JSON.stringify(await generated.json()));
+  await dialog.getByRole('button',{name:'Baixar imagem PNG'}).waitFor(); assert.equal(requests, 1, 'Clique repetido não duplica geração');
   await page.unroute('**/api/rh/vagas/*/postagem');
   assert.equal(await dialog.getByLabel('Link público da vaga').inputValue(), publicUrl);
   const downloaded = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Baixar imagem PNG' }).click();
@@ -114,6 +127,32 @@ try {
   const stream = await download.createReadStream(), chunks = []; for await (const chunk of stream) chunks.push(chunk);
   assert.deepEqual(Buffer.concat(chunks), original, 'Prévia e download usam os dados salvos');
   await dialog.screenshot({ path: 'artifacts/job-promotion/preview-desktop.png' });
+  await dialog.getByRole('button',{name:'Editar textos',exact:true}).click();
+  await dialog.getByLabel('Conteúdo principal da postagem').selectOption('responsibilities');
+  await dialog.getByLabel('Texto: responsabilidade 1',{exact:true}).fill('Atividade fictícia extensa '.repeat(12));
+  await dialog.getByRole('status').filter({hasText:'Texto muito longo:'}).waitFor();
+  await dialog.getByRole('button',{name:'Remover responsabilidade 2 da postagem'}).click();
+  await dialog.getByRole('button',{name:'Adicionar texto em responsabilidades'}).click();
+  await dialog.getByLabel('Texto: responsabilidade 5',{exact:true}).fill('Novo destaque fictício exclusivo desta imagem');
+  await dialog.getByRole('button',{name:'Remover responsabilidade 3 da postagem'}).click();
+  await dialog.getByLabel('Selecionar responsabilidade 4',{exact:true}).check();
+  await dialog.getByRole('button',{name:'Remover benefício 1 da postagem'}).click();
+  await dialog.getByLabel('Texto: benefício 2',{exact:true}).fill('Benefício fictício editado somente na imagem');
+  await page.setViewportSize({width:390,height:844});
+  await dialog.screenshot({path:'artifacts/job-promotion/editor-mobile.png'});
+  assert.ok(await dialog.evaluate(node=>node.scrollWidth<=node.clientWidth+1),'Editor sem overflow mobile');
+  const editedRequest=page.waitForRequest(request=>request.url()===endpoint&&request.method()==='POST');
+  await dialog.getByRole('button',{name:'Gerar postagem',exact:true}).click();
+  const body=(await editedRequest).postDataJSON();
+  assert.equal(body.kind,'responsibilities');assert.equal(body.items.length,3);assert.ok(body.items.includes('Novo destaque fictício exclusivo desta imagem'));
+  assert.equal(body.benefits.length,3);assert.ok(body.benefits.includes('Benefício fictício editado somente na imagem'));
+  await dialog.getByRole('button',{name:'Baixar imagem PNG'}).waitFor();
+  const customPng=await png(await page.request.post(endpoint,{data:body}),'poster-edited');
+  assert.notDeepEqual(customPng,original,'Textos temporários afetam a imagem');
+  assert.deepEqual((await db.query('select title,requirements,responsibilities,benefits,updated_at from public.jobs where id=$1',[opportunity.id])).rows[0],savedJob,'A preparação não altera o cadastro');
+  await dialog.getByRole('button',{name:'Editar textos',exact:true}).click();
+  assert.equal(await dialog.getByLabel('Texto: responsabilidade 5',{exact:true}).inputValue(),'Novo destaque fictício exclusivo desta imagem','Voltar preserva edições');
+  await dialog.getByRole('button',{name:'Gerar postagem',exact:true}).click();await dialog.getByRole('button',{name:'Baixar imagem PNG'}).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   await dialog.screenshot({ path: 'artifacts/job-promotion/preview-mobile.png' });
   assert.ok(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth + 1), 'Modal sem overflow');
@@ -122,13 +161,22 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Página sem overflow');
   // Recoverable generation failures and clipboard fallback.
   await page.route('**/api/rh/vagas/*/postagem', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Falha fictícia para conferir nova tentativa.' }) }));
-  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).click(); await card.getByRole('alert').waitFor();
-  assert.equal(await card.getByRole('button', { name: 'Gerar postagem', exact: true }).isEnabled(), true);
+  await card.getByRole('button', { name: 'Gerar postagem', exact: true }).click();
+  await dialog.getByLabel('Texto: requisito 1',{exact:true}).fill('Texto fictício que precisa ser preservado na falha');
+  await dialog.getByRole('button', { name: 'Gerar postagem', exact: true }).click(); await dialog.getByRole('alert').waitFor();
+  assert.equal(await dialog.getByRole('button', { name: 'Gerar postagem', exact: true }).isEnabled(), true);
+  assert.equal(await dialog.getByLabel('Texto: requisito 1',{exact:true}).inputValue(),'Texto fictício que precisa ser preservado na falha');
   await page.unroute('**/api/rh/vagas/*/postagem');
+  await dialog.getByRole('button',{name:'Cancelar',exact:true}).click();
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw Error('Fixture'); } } }));
   await card.getByRole('button', { name: 'Copiar link', exact: true }).click();
   await card.getByRole('status').filter({ hasText: 'Selecione e copie' }).waitFor();
   assert.equal(await card.getByLabel('Link público da vaga').evaluate(input => input.selectionEnd - input.selectionStart), publicUrl.length);
+  assert.equal((await page.request.post(endpoint,{data:{kind:'requirements',items:['Texto'],benefits:[],url:'https://other.example.test'}})).status(),422);
+  assert.equal((await page.request.post(endpoint,{data:body,headers:{origin:'https://other.example.test'}})).status(),403);
+  assert.equal((await page.request.post(endpoint,{data:'x'.repeat(256*1024+1),headers:{'content-type':'application/json'}})).status(),413);
+  assert.equal((await page.request.post(endpoint,{data:{kind:'requirements',items:[' '],benefits:[]}})).status(),422);
+  await png(await page.request.post(endpoint,{data:{kind:'responsibilities',items:['Atividade fictícia sem benefícios selecionados'],benefits:[]}}),'poster-no-benefits');
   for (const change of ["status='draft'", "status='paused'", "status='closed'", "visibility='internal'", "deadline=now()-interval '1 day'"]) {
     await db.query(`update public.jobs set ${change} where id=$1`, [opportunity.id]);
     assert.equal((await page.request.get(endpoint)).status(), 409, 'Vaga indisponível bloqueada');
@@ -144,6 +192,7 @@ try {
   await portal.getByRole('button', { name: 'Copiar link', exact: true }).waitFor();
   await login(portal, candidate.email); await portal.waitForURL('**/candidato');
   assert.equal((await portal.request.get(endpoint)).status(), 403, 'Candidato recusado');
+  assert.equal((await portal.request.post(endpoint,{data:body})).status(),403);
   // Read permission and the assigned-job scope remain authoritative on the API.
   roleId = (await db.query("insert into public.roles(name,scope) values($1,'assigned') returning id", [`Perfil fictício de postagem ${suffix}`])).rows[0].id;
   await db.query("insert into public.role_permissions(role_id,permission) values($1,'jobs.read')", [roleId]);
@@ -151,13 +200,15 @@ try {
   await db.query('insert into public.staff_roles(user_id,role_id) values($1,$2)', [staff.id, roleId]);
   await db.query('insert into public.job_assignments(job_id,user_id) values($1,$2)', [opportunity.id, staff.id]);
   await png(await page.request.get(endpoint));
+  await png(await page.request.post(endpoint,{data:body}));
   assert.equal((await page.request.get(`${base}/api/rh/vagas/${other.id}/postagem`)).status(), 403, 'Escopo de outra vaga recusado');
+  assert.equal((await page.request.post(`${base}/api/rh/vagas/${other.id}/postagem`,{data:body})).status(),403);
   await db.query("insert into private.staff_permission_overrides(user_id,permission,allowed) values($1,'jobs.read',false)", [staff.id]);
   assert.equal((await page.request.get(endpoint)).status(), 403, 'Permissão revogada recusada');
   await db.query('update public.staff set active=false where user_id=$1', [staff.id]);
   assert.equal((await page.request.get(endpoint)).status(), 403, 'Conta desativada recusada');
   assert.deepEqual(errors, []);
-  console.log('PASS: PNG, prévia/download, dados salvos, copiar/fallback, loading/retry, mobile, estados de publicação, MFA, candidato/visitante, permissões e escopo de vaga.');
+  console.log('PASS: preparação, seleção/edição, avisos, PNG e prévia/download, vaga preservada, rascunho/retry, mobile, validação HTTP, publicação, MFA e escopo de acesso.');
 } catch (error) {
   await page?.screenshot({ path: 'artifacts/job-promotion/failure.png', fullPage: true }); throw error;
 } finally {

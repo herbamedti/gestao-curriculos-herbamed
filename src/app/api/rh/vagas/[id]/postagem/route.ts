@@ -4,13 +4,14 @@ import { config } from '@/lib/config';
 import { jobCanShare, jobPostModel, jobPostSchema } from '@/modules/jobs/post-model';
 import { jobPostPng } from '@/modules/jobs/post-image';
 import { log } from '@/lib/logger';
+import { readPostSelection } from '@/modules/jobs/post-request';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' };
 const failure = (message: string, status: number) => Response.json({ message }, { status, headers });
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+async function generate(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) return failure('Vaga inválida.', 400);
   const client = await db();
@@ -28,8 +29,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const job = jobPostSchema.safeParse(data);
   if (!job.success) return failure('Não foi possível preparar os dados desta vaga.', 422);
   if (!jobCanShare(job.data)) return failure('A vaga precisa estar pública, publicada e dentro do prazo para compartilhar.', 409);
+  const selection = request.method === 'POST' ? await readPostSelection(request,new URL(config.url).origin) : undefined;
+  if (selection && !selection.ok) return failure(selection.message, selection.status);
   try {
-    const bytes = await jobPostPng(jobPostModel(job.data, config.url));
+    const bytes = await jobPostPng(jobPostModel(job.data, config.url, selection?.data));
     return new Response(bytes, { headers: {
       ...headers, 'Content-Type': 'image/png',
       'Content-Disposition': `attachment; filename="vaga-${job.data.code}-herbamed.png"`,
@@ -39,3 +42,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return failure('Não foi possível gerar a imagem. Tente novamente.', 500);
   }
 }
+
+export const GET = generate;
+export const POST = generate;

@@ -62,8 +62,8 @@ export async function jobPostPng(post: JobPostModel) {
     <div style={{ ...flex, alignItems: 'center', justifyContent: 'center', position: 'absolute', left: 80, top: 484, width: 920, height: 126, borderRadius: 42, background: '#009c49', padding: '12px 28px', fontSize: titleSize, fontWeight: 800, textAlign: 'center', lineHeight: 1.12, wordBreak: 'break-word' }}>{title}</div>
     <div style={{ ...flex, position: 'absolute', left: 88, top: 631, fontSize: 22, color: '#e1ffeb' }}>{post.contract}</div>
     <div style={{ ...flex, justifyContent: 'space-between', position: 'absolute', left: 88, top: 692, width: 904 }}>
-      <PostSection section={post.primary} width={522} />
-      <PostSection section={post.secondary} width={330} />
+      <PostSection section={post.primary} width={post.secondary.items.length ? 522 : 904} />
+      {post.secondary.items.length > 0 && <PostSection section={post.secondary} width={330} />}
     </div>
     <div style={{ position: 'absolute', left: 88, top: 1134, fontSize: 25, color: lime, fontWeight: 800 }}>Confira os detalhes e candidate-se:</div>
     <div style={{ ...flex, alignItems: 'center', justifyContent: 'center', position: 'absolute', left: 80, top: 1181, width: 920, height: 104, padding: '12px 25px', borderRadius: 24, background: '#00a953', textAlign: 'center', wordBreak: 'break-all', fontSize: post.url.length > 140 ? 18 : post.url.length > 80 ? 21 : 25, lineHeight: 1.25, fontWeight: 800 }}>{post.url}</div>
